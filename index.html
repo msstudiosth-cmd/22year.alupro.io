@@ -3,1592 +3,974 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบคำนวณตัดกระจกและอลูมิเนียม (Advanced Cutting Optimization)</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <title>ระบบติดตามการผลิตและส่งของ</title>
+    <!-- Google Fonts: Inter & Prompt -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Prompt:wght@300;400;500&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { font-family: 'Prompt', sans-serif; }
+        :root {
+            --primary-color: #2563eb;
+            --bg-body: #f8fafc;
+            --card-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+        }
+
+        body {
+            font-family: 'Prompt', 'Inter', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            letter-spacing: -0.01em;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.01) !important;
+        }
+
+        .form-control, .form-select {
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            padding: 0.6rem 0.875rem;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .btn {
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            font-weight: 500;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary { background-color: var(--primary-color); border-color: var(--primary-color); }
+        .btn-primary:hover { background-color: #1d4ed8; border-color: #1d4ed8; }
+
+        .stat-card {
+            border: none;
+            border-radius: 12px;
+            color: #fff;
+            padding: 1.25rem;
+        }
+        .stat-success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+        .stat-process { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+        .stat-delayed { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
+
+        .stage-row { border-bottom: 1px dashed var(--border-color); padding-bottom: 12px; margin-bottom: 12px; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         
-        /* สไตล์สำหรับการพิมพ์รายงานให้ดูเรียบร้อย */
-        @media print {
-            body * { visibility: hidden; }
-            header, nav, .no-print, button { display: none !important; }
-            
-            #cuttingResultArea, #cuttingResultArea * { visibility: visible; }
-            #cuttingResultArea { 
-                position: absolute; 
-                left: 0; 
-                top: 0; 
-                width: 100%; 
-                box-shadow: none !important; 
-                margin: 0 !important; 
-                padding: 10px !important; 
-                border: none !important;
-            }
+        .minimal-stage { 
+            font-size: 12px; 
+            line-height: 1.5; 
+            border-left: 2px solid var(--primary-color); 
+            padding-left: 8px; 
+            margin-bottom: 6px; 
+            background: #f8fafc;
+            border-radius: 0 6px 6px 0;
+            padding-top: 4px;
+            padding-bottom: 4px;
+        }
 
-            #bomReportArea, #bomReportArea * { visibility: visible; }
-            #bomReportArea { 
-                position: absolute; 
-                left: 0; 
-                top: 0; 
-                width: 100%; 
-                box-shadow: none !important; 
-                margin: 0 !important; 
-                padding: 10px !important; 
-                border: none !important;
-            }
+        .collapsible-content { transition: max-height 0.3s ease-out; overflow: hidden; }
 
-            #scrapReportArea, #scrapReportArea * { visibility: visible; }
-            #scrapReportArea { 
-                position: absolute; 
-                left: 0; 
-                top: 0; 
-                width: 100%; 
-                box-shadow: none !important; 
-                margin: 0 !important; 
-                padding: 10px !important; 
-                border: none !important;
-            }
+        .table-custom {
+            font-size: 0.875rem;
+            border-color: var(--border-color);
+        }
+        .table-custom thead th {
+            background-color: #f1f5f9;
+            color: #334155;
+            border-bottom: 2px solid #cbd5e1;
+            border-right: 1px solid var(--border-color);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            vertical-align: middle;
+            padding: 12px 10px;
+        }
+        .table-custom thead th:last-child { border-right: none; }
+        .table-custom tbody td {
+            border-right: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+            padding: 12px 10px;
+        }
+        .table-custom tbody td:last-child { border-right: none; }
+        .table-custom tbody tr:hover { background-color: #f8fafc; }
+        
+        .badge {
+            font-weight: 500;
+            padding: 0.35em 0.65em;
+            border-radius: 6px;
+        }
 
-            /* บังคับพิมพ์สีพื้นหลังและความโปร่งใส */
-            * {
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
-            
-            @page {
-                size: A4;
-                margin: 10mm;
-            }
+        .nav-tabs .nav-link {
+            border: none;
+            color: var(--text-muted);
+            font-weight: 500;
+            padding: 10px 20px;
+            border-radius: 8px 8px 0 0;
+        }
+        .nav-tabs .nav-link.active {
+            color: var(--primary-color);
+            background-color: var(--card-bg);
+            border-bottom: 2px solid var(--primary-color);
         }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-light">
 
-    <!-- LOGIN SCREEN -->
-    <div id="loginScreen" class="fixed inset-0 bg-blue-900 flex items-center justify-center z-50">
-        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
-            <div class="text-center mb-6">
-                <h1 class="text-2xl font-bold text-blue-600">🪟 AluGlass Cut System</h1>
-                <p class="text-sm text-gray-500 mt-1">กรุณาเข้าสู่ระบบเพื่อใช้งาน</p>
+    <!-- Login Section -->
+    <div id="login-section" class="container mt-5" style="max-width: 400px;">
+        <div class="card p-4">
+            <div class="text-center mb-4">
+                <h4 class="fw-bold mb-1">เข้าสู่ระบบ</h4>
+                <p class="text-muted small">ระบบติดตามการผลิตและส่งของ</p>
             </div>
-            <form onsubmit="handleLogin(event)" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">ชื่อผู้ใช้งาน (Username)</label>
-                    <input type="text" id="loginUser" required placeholder="admin หรือ staff" class="w-full border rounded-lg p-2.5 mt-1 outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">รหัสผ่าน (Password)</label>
-                    <input type="password" id="loginPass" required placeholder="••••••••" class="w-full border rounded-lg p-2.5 mt-1 outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-                <div class="bg-gray-50 p-3 rounded-lg text-xs text-gray-500 space-y-1">
-                    <p>💡 **บัญชีทดสอบ:**</p>
-                    <p>• Admin: <code>admin</code> / <code>1234</code></p>
-                    <p>• Staff: <code>staff</code> / <code>1234</code></p>
-                </div>
-                <button type="submit" class="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 transition">เข้าสู่ระบบ</button>
-            </form>
+            <div class="mb-3">
+                <label class="form-label small text-muted">Email</label>
+                <input type="email" id="email" class="form-control" value="admin@company.com">
+            </div>
+            <div class="mb-3">
+                <label class="form-label small text-muted">Password</label>
+                <input type="password" id="password" class="form-control" value="1234">
+            </div>
+            <button onclick="login()" class="btn btn-primary w-100 mt-2">เข้าสู่ระบบ</button>
         </div>
     </div>
 
-    <!-- MAIN APPLICATION -->
-    <div id="mainApp" class="hidden min-h-screen flex flex-col">
-        <header class="bg-blue-600 text-white shadow-md no-print">
-            <div class="container mx-auto px-4 py-3 flex justify-between items-center">
-                <h1 class="text-xl font-semibold">🪟 AluGlass Cut System</h1>
-                <div class="flex items-center gap-4">
-                    <span id="currentUserRole" class="bg-blue-700 px-3 py-1 rounded text-sm">โหมด: -</span>
-                    <button onclick="handleLogout()" class="bg-red-500 text-white px-3 py-1 rounded text-sm font-medium hover:bg-red-600 transition">ออกจากระบบ</button>
-                </div>
+    <!-- Dashboard Section -->
+    <div id="app-section" class="container mt-4 mb-5" style="display: none;">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h4 class="fw-bold m-0">ระบบติดตามการผลิตและส่งของ</h4>
+                <span class="text-muted small">ผู้ใช้งาน: <strong id="user-name" class="text-dark"></strong> | สิทธิ์: <span id="user-role" class="badge bg-secondary"></span></span>
             </div>
-        </header>
+            <button onclick="logout()" class="btn btn-outline-danger btn-sm">ออกจากระบบ</button>
+        </div>
 
-        <main class="container mx-auto px-4 py-6 flex-grow space-y-6">
-            <!-- Tab Navigation -->
-            <div class="flex border-b border-gray-300 overflow-x-auto bg-white rounded-t-lg shadow-sm px-4 pt-2 no-print">
-                <button onclick="switchTab('projects')" id="tab-projects" class="py-2.5 px-4 font-medium border-b-2 border-blue-600 text-blue-600 focus:outline-none whitespace-nowrap">3. โครงการ & Cutting List</button>
-                <button onclick="switchTab('inventory')" id="tab-inventory" class="py-2.5 px-4 font-medium text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap">1. จัดการสต็อก (Admin)</button>
-                <button onclick="switchTab('formulas')" id="tab-formulas" class="py-2.5 px-4 font-medium text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap">2. สูตรและส่วนประกอบ (Admin)</button>
-            </div>
+        <!-- Tab Menu Switcher -->
+        <ul class="nav nav-tabs mb-4" id="mainTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="production-tab" data-bs-toggle="tab" data-bs-target="#production-content" type="button" role="tab">📦 ติดตามการผลิต</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="delivery-tab" data-bs-toggle="tab" data-bs-target="#delivery-content" type="button" role="tab">🚚 บันทึกส่งของ</button>
+            </li>
+        </ul>
 
-            <!-- SECTION 1: INVENTORY -->
-            <section id="section-inventory" class="hidden space-y-6 no-print">
-                <div class="bg-blue-50 p-4 rounded-lg shadow-sm flex justify-between items-center flex-wrap gap-4">
-                    <div>
-                        <h3 class="font-bold text-blue-800">📦 จัดการข้อมูลสต็อก (Import / Export)</h3>
-                        <p class="text-xs text-gray-600">สำรองข้อมูลหรือนำเข้าข้อมูลสต็อกเป็นไฟล์ JSON</p>
-                    </div>
-                    <div class="flex gap-2">
-                        <button onclick="exportData('inventory')" class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">📤 Export สต็อก</button>
-                        <label class="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700 cursor-pointer">
-                            📥 Import สต็อก <input type="file" onchange="importData(event, 'inventory')" class="hidden" accept=".json">
-                        </label>
-                    </div>
+        <div class="tab-content" id="mainTabContent">
+            
+            <!-- TAB 1: PRODUCTION -->
+            <div class="tab-pane fade show active" id="production-content" role="tabpanel">
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4"><div class="card stat-card stat-success shadow-sm">
+                        <span class="small opacity-75">งานเสร็จสิ้น</span>
+                        <h2 id="count-success" class="fw-bold m-0 mt-1">0</h2>
+                    </div></div>
+                    <div class="col-md-4"><div class="card stat-card stat-process shadow-sm">
+                        <span class="small opacity-75">กำลังดำเนินการ</span>
+                        <h2 id="count-process" class="fw-bold m-0 mt-1">0</h2>
+                    </div></div>
+                    <div class="col-md-4"><div class="card stat-card stat-delayed shadow-sm">
+                        <span class="small opacity-75">งานล่าช้า</span>
+                        <h2 id="count-delayed" class="fw-bold m-0 mt-1">0</h2>
+                    </div></div>
                 </div>
 
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <h2 id="invFormTitle" class="text-lg font-semibold mb-4 text-blue-600">➕ เพิ่มรายการสินค้าในสต็อก</h2>
-                    <form id="inventoryForm" onsubmit="saveInventoryItem(event)" class="grid grid-cols-1 md:grid-cols-6 gap-4">
-                        <input type="hidden" id="editInvId" value="">
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-medium">ชื่อสินค้า</label>
-                            <input type="text" id="invName" required class="w-full border rounded p-2 mt-1">
+                <!-- Form Section -->
+                <div id="form-container" class="card p-4 mb-4" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold m-0" id="form-title">จัดการคำสั่งผลิต</h5>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleFormSection()">ย่อ / ขยาย</button>
+                    </div>
+                    
+                    <div id="form-body" class="collapsible-content">
+                        <div class="row g-3 align-items-end mb-3">
+                            <div class="col-md-3">
+                                <label class="form-label small text-muted mb-1">รหัสสั่งผลิต</label>
+                                <input type="hidden" id="originalOrderId">
+                                <input type="text" id="orderId" class="form-control" placeholder="รหัสสั่งผลิต">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small text-muted mb-1">ชื่อโครงการ</label>
+                                <input type="text" id="productName" class="form-control" placeholder="ชื่อโครงการ">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small text-muted mb-1">จำนวนชุด</label>
+                                <input type="number" id="quantity" class="form-control" placeholder="จำนวนชุด">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small text-muted mb-1">วันที่เปิดใบสั่งผลิต</label>
+                                <input type="date" id="orderDate" class="form-control">
+                            </div>
                         </div>
-                        <div>
-                            <label class="block text-sm font-medium">ประเภท</label>
-                            <select id="invType" onchange="toggleSizeInputs()" class="w-full border rounded p-2 mt-1">
-                                <option value="Aluminum">อลูมิเนียม (เส้นยาว)</option>
-                                <option value="Glass">กระจก (แผ่น)</option>
-                                <option value="Accessory">อุปกรณ์ / อะไหล่</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium">หน่วยนับ</label>
-                            <input type="text" id="invUnit" placeholder="เช่น เส้น, แผ่น, ชุด" value="เส้น" required class="w-full border rounded p-2 mt-1">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium">จำนวนคงเหลือในสต็อก</label>
-                            <input type="number" id="invQuantity" value="100" min="0" required class="w-full border rounded p-2 mt-1">
+
+                        <div class="row g-3 align-items-end mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted mb-1">ลิงก์เอกสาร (URL)</label>
+                                <input type="text" id="docLink" class="form-control" placeholder="https://...">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted mb-1">ช่างผู้รับผิดชอบ</label>
+                                <select id="technician" class="form-select">
+                                    <option value="">-- เลือกช่าง --</option>
+                                </select>
+                            </div>
                         </div>
                         
-                        <div class="md:col-span-1">
-                            <label class="block text-sm font-medium">หมายเหตุ (เช่น ขนาดตัด)</label>
-                            <input type="text" id="invRemark" placeholder="เช่น 42*96" class="w-full border rounded p-2 mt-1">
+                        <hr class="text-muted opacity-25">
+                        <h6 class="fw-semibold mb-3">รายละเอียดขั้นตอน</h6>
+                        <div class="row g-2 text-muted small fw-bold mb-1 d-none d-md-flex">
+                            <div class="col-md-3">ชื่อขั้นตอน</div>
+                            <div class="col-md-2">วันที่เริ่ม</div>
+                            <div class="col-md-2">วันที่คาดว่าจะเสร็จ</div>
+                            <div class="col-md-2">วันที่เสร็จจริง</div>
+                            <div class="col-md-2">% หากจบจริง</div>
+                            <div class="col-md-1"></div>
                         </div>
 
-                        <div id="containerSizeLength">
-                            <label class="block text-sm font-medium">ขนาดความยาว (มม.)</label>
-                            <input type="number" id="invSize" placeholder="เช่น 6400" class="w-full border rounded p-2 mt-1">
+                        <div id="stages-container"></div>
+                        <button type="button" id="btnAddStage" class="btn btn-outline-primary btn-sm mt-2" onclick="addStageRow()">+ เพิ่มขั้นตอน</button>
+                        <hr class="text-muted opacity-25 my-4">
+                        <div class="d-flex gap-2">
+                            <button onclick="saveOrder()" class="btn btn-success">บันทึกข้อมูล</button>
                         </div>
-
-                        <div id="containerWeightPerMeter">
-                            <label class="block text-sm font-medium">น้ำหนัก (กก./เมตร)</label>
-                            <input type="number" step="0.001" id="invWeightPerMeter" placeholder="เช่น 1.250" value="0" class="w-full border rounded p-2 mt-1">
-                        </div>
-
-                        <div id="containerSizeWidth" class="hidden">
-                            <label class="block text-sm font-medium">กว้าง W (มม.) สต็อก</label>
-                            <input type="number" id="invWidth" placeholder="เช่น 2400" class="w-full border rounded p-2 mt-1">
-                        </div>
-                        <div id="containerSizeHeight" class="hidden">
-                            <label class="block text-sm font-medium">สูง H (มม.) สต็อก</label>
-                            <input type="number" id="invHeight" placeholder="เช่น 3000" class="w-full border rounded p-2 mt-1">
-                        </div>
-
-                        <div id="containerAllowance">
-                            <label class="block text-sm font-medium">ระยะเผื่อความยาว (มม.)</label>
-                            <input type="number" id="invAllowance" value="0" placeholder="เช่น 100" class="w-full border rounded p-2 mt-1">
-                        </div>
-
-                        <div class="md:col-span-5">
-                            <label class="block text-sm font-medium">URL รูปภาพ</label>
-                            <input type="url" id="invImg" placeholder="https://..." class="w-full border rounded p-2 mt-1">
-                        </div>
-                        <div class="md:col-span-6 flex justify-end gap-2">
-                            <button type="button" onclick="resetInvForm()" id="cancelInvEditBtn" class="hidden bg-gray-500 text-white px-4 py-2 rounded">ยกเลิกแก้ไข</button>
-                            <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">บันทึกเข้าสต็อก</button>
-                        </div>
-                    </form>
+                    </div>
                 </div>
 
-                <div class="bg-white p-6 rounded-lg shadow-md space-y-4">
-                    <div class="flex justify-between items-center flex-wrap gap-4">
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <h2 class="text-lg font-semibold">📦 รายการสินค้าในสต็อกทั้งหมด</h2>
-                            <select id="invCategoryFilter" onchange="currentInvPage=1; renderInventory();" class="border rounded p-1.5 text-sm">
-                                <option value="all">ทุกหมวดหมู่</option>
-                                <option value="Aluminum">อลูมิเนียม</option>
-                                <option value="Glass">กระจก</option>
-                                <option value="Accessory">อุปกรณ์</option>
-                            </select>
-                            <select id="invItemsPerPage" onchange="currentInvPage=1; renderInventory();" class="border rounded p-1.5 text-sm">
-                                <option value="5">5</option>
-                                <option value="10" selected>10</option>
-                                <option value="15">15</option>
-                                <option value="20">20</option>
-                                <option value="all">ทั้งหมด</option>
+                <!-- Table & Filter Section -->
+                <div class="card p-4">
+                    <div class="row g-3 align-items-center mb-4">
+                        <div class="col-md-2"><h5 class="fw-bold m-0">รายการคำสั่งผลิต</h5></div>
+                        <div class="col-md-3">
+                            <div class="input-group">
+                                <input type="date" id="filter-start-date" class="form-control" onchange="filterOrders()" title="วันที่เริ่มต้น">
+                                <span class="input-group-text">ถึง</span>
+                                <input type="date" id="filter-end-date" class="form-control" onchange="filterOrders()" title="วันที่สิ้นสุด">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <input type="text" id="filter-order-id" class="form-control" placeholder="ค้นหารหัส..." oninput="filterOrders()">
+                        </div>
+                        <div class="col-md-2">
+                            <input type="text" id="filter-tech" class="form-control" placeholder="ค้นหาช่าง..." oninput="filterOrders()">
+                        </div>
+                        <div class="col-md-3">
+                            <select id="filter-status" class="form-select" onchange="filterOrders()">
+                                <option value="ทั้งหมด">ทุกสถานะ</option>
+                                <option value="เสร็จสิ้น">งานเสร็จสิ้น</option>
+                                <option value="กำลังดำเนินการ">กำลังดำเนินการ</option>
+                                <option value="ล่าช้า">งานล่าช้า</option>
                             </select>
                         </div>
-                        <input type="text" id="searchInventory" onkeyup="currentInvPage=1; renderInventory();" placeholder="🔍 ค้นหาสินค้า..." class="border rounded p-2 text-sm w-72">
                     </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
+                    <div class="table-responsive">
+                        <table class="table table-custom table-bordered align-middle mb-0">
                             <thead>
-                                <tr class="bg-gray-200 border-b text-sm">
-                                    <th class="p-3">รูปภาพ</th>
-                                    <th class="p-3">ชื่อสินค้า</th>
-                                    <th class="p-3">ประเภท</th>
-                                    <th class="p-3">หมายเหตุ</th>
-                                    <th class="p-3">จำนวนคงเหลือ</th>
-                                    <th class="p-3">ขนาด / น้ำหนัก (กก./ม.)</th>
-                                    <th class="p-3">ระยะเผื่อ</th>
-                                    <th class="p-3 text-center">จัดการ</th>
+                                <tr>
+                                    <th style="width: 15%;">รหัส / วันที่สั่ง</th>
+                                    <th style="width: 18%;">โครงการ / ช่าง</th>
+                                    <th style="width: 15%;">ความคืบหน้ารวม</th>
+                                    <th style="width: 10%;">สถานะ</th>
+                                    <th style="width: 32%;">ขั้นตอนการผลิต</th>
+                                    <th id="action-header" style="width: 10%; display: none;">จัดการ</th>
                                 </tr>
                             </thead>
-                            <tbody id="inventoryTableBody"></tbody>
+                            <tbody id="order-table-body"></tbody>
                         </table>
                     </div>
-                    <div id="invPaginationContainer" class="flex justify-center gap-1 pt-2"></div>
                 </div>
-            </section>
+            </div>
 
-            <!-- SECTION 2: FORMULAS -->
-            <section id="section-formulas" class="hidden space-y-6 no-print">
-                <div class="bg-blue-50 p-4 rounded-lg shadow-sm flex justify-between items-center flex-wrap gap-4">
-                    <div>
-                        <h3 class="font-bold text-blue-800">📐 จัดการข้อมูลสูตรตัด (Import / Export)</h3>
-                        <p class="text-xs text-gray-600">สำรองข้อมูลหรือนำเข้าสูตรการประกอบเป็นไฟล์ JSON</p>
+            <!-- TAB 2: DELIVERY -->
+            <div class="tab-pane fade" id="delivery-content" role="tabpanel">
+                <div id="delivery-form-container" class="card p-4 mb-4" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold m-0">บันทึกข้อมูลการส่งของ</h5>
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#selectOrderModal" onclick="loadModalOrders()">🔍 ดึงรายการจากคำสั่งผลิต</button>
                     </div>
-                    <div class="flex gap-2">
-                        <button onclick="exportData('formulas')" class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">📤 Export สูตร</button>
-                        <label class="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700 cursor-pointer">
-                            📥 Import สูตร <input type="file" onchange="importData(event, 'formulas')" class="hidden" accept=".json">
-                        </label>
+                    
+                    <input type="hidden" id="deliveryId">
+                    <div class="row g-3 align-items-end mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label small text-muted mb-1">วันที่ส่งของ</label>
+                            <input type="date" id="deliveryDate" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small text-muted mb-1">เลขที่ใบส่งของ / Order ID</label>
+                            <input type="text" id="delInvoiceNo" class="form-control" placeholder="ระบุเลขที่ใบส่งของ">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small text-muted mb-1">ชื่อลูกค้า</label>
+                            <input type="text" id="delCustomer" class="form-control" placeholder="ชื่อลูกค้า">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small text-muted mb-1">รายการโครงการ / จำนวนชุด</label>
+                            <input type="text" id="delProductDetails" class="form-control" placeholder="เช่น โครงการ A (10 ชุด)">
+                        </div>
                     </div>
-                </div>
-
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <h2 id="formTitle" class="text-lg font-semibold mb-4 text-blue-600">📐 สร้างชุดงานและเพิ่มรายการวัสดุประกอบ</h2>
-                    <form id="formulaForm" onsubmit="saveFullSet(event)" class="space-y-4">
-                        <input type="hidden" id="editFormulaId" value="">
-                        <div>
-                            <label class="block text-sm font-medium mb-1">ชื่อชุดงาน (เช่น ชุดบานเลื่อนสลับ)</label>
-                            <input type="text" id="newSetName" required placeholder="ระบุชื่อชุดงาน" class="w-full border rounded p-2">
+                    <div class="row g-3 align-items-end mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted mb-1">บริษัทขนส่ง</label>
+                            <input type="text" id="delCarrier" class="form-control" placeholder="เช่น Flash, Kerry, J&T, รถบริษัท">
                         </div>
-                        <div class="border-t pt-4">
-                            <label class="block text-sm font-medium mb-2">รายการวัสดุ จำนวน สูตรตัด และหมายเหตุ</label>
-                            <div id="dynamicMaterialList" class="space-y-3 mb-3"></div>
-                            <button type="button" onclick="addMaterialRow()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-300 font-medium">+ เพิ่มรายการวัสดุ</button>
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted mb-1">เลขติดตามพัสดุ (Tracking No.)</label>
+                            <input type="text" id="delTrackingNo" class="form-control" placeholder="เลขพัสดุ">
                         </div>
-                        <div class="flex justify-end gap-2 pt-4 border-t">
-                            <button type="button" onclick="resetFormulaForm()" id="cancelEditBtn" class="hidden bg-gray-500 text-white px-4 py-2 rounded">ยกเลิกแก้ไข</button>
-                            <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">บันทึกชุดงาน</button>
-                        </div>
-                    </form>
-                </div>
-
-                <div class="bg-white p-6 rounded-lg shadow-md space-y-4">
-                    <div class="flex justify-between items-center flex-wrap gap-2">
-                        <div class="flex items-center gap-2">
-                            <h2 class="text-lg font-semibold">📋 รายการชุดงานทั้งหมด</h2>
-                            <select id="itemsPerPage" onchange="currentFormulaPage=1; renderFormulas();" class="border rounded p-1 text-sm">
-                                <option value="5">5</option>
-                                <option value="10" selected>10</option>
-                                <option value="15">15</option>
-                                <option value="20">20</option>
-                                <option value="all">ทั้งหมด</option>
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted mb-1">สถานะการจัดส่ง</label>
+                            <select id="delStatus" class="form-select">
+                                <option value="กำลังจัดส่ง">กำลังจัดส่ง</option>
+                                <option value="ส่งสำเร็จ">ส่งสำเร็จ</option>
+                                <option value="ตีกลับ/มีปัญหา">ตีกลับ/มีปัญหา</option>
                             </select>
                         </div>
-                        <input type="text" id="searchFormula" onkeyup="currentFormulaPage=1; renderFormulas();" placeholder="🔍 ค้นหาชื่อชุดงาน..." class="border rounded p-2 text-sm w-72">
                     </div>
-                    <div id="formulaList" class="space-y-3"></div>
-                    <div id="paginationContainer" class="flex justify-center gap-1 pt-2"></div>
-                </div>
-            </section>
-
-            <!-- SECTION 3: PROJECTS & CUTTING LIST -->
-            <section id="section-projects" class="space-y-6">
-                <div class="bg-white p-6 rounded-lg shadow-md space-y-4 no-print">
-                    <h2 class="text-lg font-semibold text-blue-600">🏢 จัดการโครงการ & คำนวณ Cutting List (Bar Cut)</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium">ชื่อโครงการ</label>
-                            <input type="text" id="projName" placeholder="เช่น โครงการคอนโด A" class="w-full border rounded p-2 mt-1">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium">ระยะใบตัดกินเนื้อชิ้นงาน (Blade Kerf มม.)</label>
-                            <input type="number" id="bladeKerf" value="3" class="w-full border rounded p-2 mt-1">
-                        </div>
-                    </div>
-
-                    <div class="border-t pt-4">
-                        <h3 class="font-medium text-gray-700 mb-2">➕ เพิ่มรายการช่องเปิด (เลือกชุดงาน, ขนาด W x H และระบุจำนวนชุด)</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-5 gap-2 items-end">
-                            <div class="md:col-span-2">
-                                <label class="block text-xs text-gray-500 mb-1">เลือกชุดงาน</label>
-                                <select id="inputItemSet" class="w-full border rounded p-2 text-sm"></select>
-                            </div>
-                            <div>
-                                <label class="block text-xs text-gray-500 mb-1">กว้าง W (มม.)</label>
-                                <input type="number" id="inputItemW" placeholder="กว้าง W" class="w-full border rounded p-2 text-sm">
-                            </div>
-                            <div>
-                                <label class="block text-xs text-gray-500 mb-1">สูง H (มม.)</label>
-                                <input type="number" id="inputItemH" placeholder="สูง H" class="w-full border rounded p-2 text-sm">
-                            </div>
-                            <div>
-                                <label class="block text-xs text-gray-500 mb-1">จำนวนชุด</label>
-                                <div class="flex gap-1">
-                                    <input type="number" id="inputItemQty" value="1" min="1" placeholder="จำนวน" class="w-full border rounded p-2 text-sm">
-                                    <button onclick="addProjectItemRow()" class="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700 whitespace-nowrap">+ เพิ่ม</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="border-t pt-4">
-                        <h4 class="font-medium text-gray-700 mb-2">รายการช่องเปิดที่ต้องคำนวณ</h4>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse text-sm">
-                                <thead>
-                                    <tr class="bg-gray-200 border-b">
-                                        <th class="p-2.5">ชุดงาน</th>
-                                        <th class="p-2.5">ความกว้าง (W)</th>
-                                        <th class="p-2.5">ความสูง (H)</th>
-                                        <th class="p-2.5">จำนวนชุด</th>
-                                        <th class="p-2.5 text-center">จัดการ</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="projectItemsTableBody">
-                                    <tr><td colspan="5" class="text-center p-4 text-gray-400">ยังไม่มีรายการช่องเปิด (กรุณาเพิ่มด้านบน)</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div class="flex justify-end pt-2">
-                        <button onclick="generateCuttingList()" class="bg-green-600 text-white px-6 py-2.5 rounded-lg hover:bg-green-700 transition font-medium">⚙️ ประมวลผลคำนวณ Cutting List ทั้งหมด</button>
+                    <div class="d-flex gap-2">
+                        <button onclick="saveDelivery()" class="btn btn-success">บันทึกข้อมูลส่งของ</button>
+                        <button onclick="resetDeliveryForm()" class="btn btn-outline-secondary">ล้างฟอร์ม</button>
                     </div>
                 </div>
 
-                <!-- SUB-TABS FOR REPORTS -->
-                <div id="reportSectionContainer" class="hidden space-y-4">
-                    <div class="flex border-b border-gray-300 bg-white rounded-t-lg shadow-sm px-4 pt-2 no-print overflow-x-auto">
-                        <button onclick="switchReportTab('cutting-alu')" id="subtab-cutting-alu" class="py-2 px-4 font-medium border-b-2 border-blue-600 text-blue-600 focus:outline-none whitespace-nowrap">📐 1. วัสดุอลูมิเนียม</button>
-                        <button onclick="switchReportTab('cutting-glass')" id="subtab-cutting-glass" class="py-2 px-4 font-medium text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap">🪟 2. วัสดุกระจก</button>
-                        <button onclick="switchReportTab('cutting-acc')" id="subtab-cutting-acc" class="py-2 px-4 font-medium text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap">🔩 3. วัสดุอุปกรณ์ / อะไหล่</button>
-                        <button onclick="switchReportTab('bom')" id="subtab-bom" class="py-2 px-4 font-medium text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap">📋 BOM Material รวม</button>
-                        <button onclick="switchReportTab('scrap')" id="subtab-scrap" class="py-2 px-4 font-medium text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap">♻️ รายงานเศษ Scrap</button>
-                    </div>
-
-                    <!-- CUTTING RESULT CONTAINER -->
-                    <div id="cuttingResultArea" class="bg-white p-6 rounded-lg shadow-md space-y-6">
-                        <div class="flex justify-between items-center border-b pb-3 no-print">
-                            <h3 class="text-xl font-bold text-gray-700">📊 ผลลัพธ์ Cutting List & Bar Cut Optimization</h3>
-                            <button onclick="window.print()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition flex items-center gap-2">🖨️ พิมพ์รายงาน</button>
+                <div class="card p-4">
+                    <div class="row g-3 align-items-center mb-4">
+                        <div class="col-md-3"><h5 class="fw-bold m-0">ประวัติการส่งของ</h5></div>
+                        <div class="col-md-3">
+                            <input type="date" id="filter-del-date" class="form-control" onchange="filterDeliveries()" title="กรองตามวันที่ส่ง">
                         </div>
-
-                        <!-- TAB CONTENT 1: ALUMINUM -->
-                        <div id="tabContent-cutting-alu" class="space-y-4">
-                            <div id="cuttingOutputAlu" class="space-y-4"></div>
+                        <div class="col-md-3">
+                            <input type="text" id="filter-del-search" class="form-control" placeholder="ค้นหาลูกค้า, เลขพัสดุ..." oninput="filterDeliveries()">
                         </div>
-
-                        <!-- TAB CONTENT 2: GLASS -->
-                        <div id="tabContent-cutting-glass" class="space-y-4 hidden">
-                            <div id="cuttingOutputGlass" class="space-y-4"></div>
-                        </div>
-
-                        <!-- TAB CONTENT 3: ACCESSORY -->
-                        <div id="tabContent-cutting-acc" class="space-y-4 hidden">
-                            <div id="cuttingOutputAcc" class="space-y-4"></div>
+                        <div class="col-md-3">
+                            <select id="filter-del-status" class="form-select" onchange="filterDeliveries()">
+                                <option value="ทั้งหมด">ทุกสถานะการส่ง</option>
+                                <option value="กำลังจัดส่ง">กำลังจัดส่ง</option>
+                                <option value="ส่งสำเร็จ">ส่งสำเร็จ</option>
+                                <option value="ตีกลับ/มีปัญหา">ตีกลับ/มีปัญหา</option>
+                            </select>
                         </div>
                     </div>
-
-                    <!-- TAB 4: BOM MATERIAL SUMMARY -->
-                    <div id="bomReportArea" class="bg-white p-6 rounded-lg shadow-md space-y-6 hidden">
-                        <div class="flex justify-between items-center border-b pb-3 no-print">
-                            <h3 class="text-xl font-bold text-gray-700">📋 รายงานสรุป BOM Material รวมทั้งโครงการ</h3>
-                            <button onclick="window.print()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition flex items-center gap-2">🖨️ พิมพ์รายงาน BOM</button>
-                        </div>
-                        <div id="bomOutputContent" class="space-y-6"></div>
-                    </div>
-
-                    <!-- TAB 5: SCRAP REPORT -->
-                    <div id="scrapReportArea" class="bg-white p-6 rounded-lg shadow-md space-y-6 hidden">
-                        <div class="flex justify-between items-center border-b pb-3 no-print">
-                            <h3 class="text-xl font-bold text-gray-700">♻️ รายงานสรุปเศษ Scrap (อลูมิเนียมเหลือใช้จากการตัด)</h3>
-                            <button onclick="window.print()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition flex items-center gap-2">🖨️ พิมพ์รายงาน Scrap</button>
-                        </div>
-                        <div id="scrapOutputContent" class="space-y-6"></div>
+                    <div class="table-responsive">
+                        <table class="table table-custom table-bordered align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width: 12%;">วันที่ส่ง</th>
+                                    <th style="width: 15%;">เลขที่ใบส่งของ</th>
+                                    <th style="width: 20%;">ลูกค้า</th>
+                                    <th style="width: 20%;">รายการโครงการ</th>
+                                    <th style="width: 15%;">ขนส่ง / Tracking</th>
+                                    <th style="width: 10%;">สถานะ</th>
+                                    <th id="del-action-header" style="width: 12%;">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="delivery-table-body"></tbody>
+                        </table>
                     </div>
                 </div>
-            </section>
-        </main>
+            </div>
+
+        </div>
     </div>
 
+    <!-- MODAL: เลือกคำสั่งผลิต -->
+    <div class="modal fade" id="selectOrderModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">เลือกคำสั่งผลิตเพื่อนำมาส่งของ</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="text" id="modal-search-order" class="form-control mb-3" placeholder="ค้นหารหัส หรือ ชื่อโครงการ..." oninput="filterModalOrders()">
+                    <div class="table-responsive">
+                        <table class="table table-custom table-bordered align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>รหัสสั่งผลิต</th>
+                                    <th>ชื่อโครงการ</th>
+                                    <th>จำนวนชุด</th>
+                                    <th>ช่างผู้รับผิดชอบ</th>
+                                    <th style="width: 15%;">เลือก</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modal-order-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
     <script>
-        let db = {
-            inventory: JSON.parse(localStorage.getItem('aluglass_inventory')) || [
-                { id: 1, name: "อลูมิเนียมเส้นขอบบานเลื่อน", type: "Aluminum", remark: "", unit: "เส้น", quantity: 50, size: 6400, weightPerMeter: 1.250, width: 0, height: 0, allowance: 100, img: "https://via.placeholder.com/100?text=Alu" },
-                { id: 2, name: "กระจกเขียวตัดแสง 5มม.", type: "Glass", remark: "42*96", unit: "แผ่น", quantity: 30, size: 0, weightPerMeter: 0, width: 2400, height: 3000, allowance: 0, img: "https://via.placeholder.com/100?text=Glass" },
-                { id: 3, name: "มือจับฝังบานเลื่อน", type: "Accessory", remark: "", unit: "ชุด", quantity: 100, size: 0, weightPerMeter: 0, width: 0, height: 0, allowance: 0, img: "https://via.placeholder.com/100?text=Acc" }
-            ],
-            formulas: JSON.parse(localStorage.getItem('aluglass_formulas')) || [
-                { 
-                    id: 1, 
-                    name: "บานเลื่อนมาตรฐาน", 
-                    items: [
-                        { mat: "อลูมิเนียมเส้นขอบบานเลื่อน", qty: 2, formula: "W - 45", remark: "เสาข้าง" },
-                        { mat: "กระจกเขียวตัดแสง 5มม.", qty: 1, formula: "W - 100 / H - 80", remark: "บานเปิด" },
-                        { mat: "มือจับฝังบานเลื่อน", qty: 2, formula: "1", remark: "ชุดล็อก" }
-                    ] 
-                }
-            ]
+        const API_URL = "https://script.google.com/macros/s/AKfycbwCh6NhZcmxDZE1TykaI5UNXzWxx03hPPQPyKRi513o30XzJfIUy5CZpJ6XGoU0wgoY0Q/exec";
+        let currentUserRole = "", allOrdersData = [], allDeliveriesData = [];
+
+        document.getElementById("orderDate").value = new Date().toISOString().split('T')[0];
+        document.getElementById("deliveryDate").value = new Date().toISOString().split('T')[0];
+
+        function convertToBeConvertedDate(dateStr) {
+            if (!dateStr) return "";
+            let cleanStr = dateStr.toString().split('T')[0]; 
+            let parts = cleanStr.split('-');
+            if (parts.length === 3) {
+                let y = parseInt(parts[0]);
+                if (y > 2500) y -= 543;
+                return `${y}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+            }
+            return cleanStr;
+        }
+
+        window.onload = () => { 
+            let role = localStorage.getItem('userRole'); 
+            let name = localStorage.getItem('userName');
+            if(role) initDashboard(role, name); 
+            resetStagesForm();
+            
+            let body = document.getElementById("form-body");
+            body.style.maxHeight = body.scrollHeight + "px";
         };
 
-        function saveToLocalStorage(type) {
-            if(type === 'inventory') {
-                localStorage.setItem('aluglass_inventory', JSON.stringify(db.inventory));
-            } else if(type === 'formulas') {
-                localStorage.setItem('aluglass_formulas', JSON.stringify(db.formulas));
-            }
-        }
-
-        let currentUser = null;
-        let currentInvPage = 1;
-        let currentFormulaPage = 1;
-        let projectItems = [];
-
-        function handleLogin(e) {
-            e.preventDefault();
-            const user = document.getElementById('loginUser').value.trim();
-            const pass = document.getElementById('loginPass').value.trim();
-
-            if ((user === 'admin' && pass === '1234') || (user === 'staff' && pass === '1234')) {
-                currentUser = { username: user, role: user === 'admin' ? 'Admin' : 'Staff' };
-                document.getElementById('loginScreen').classList.add('hidden');
-                document.getElementById('mainApp').classList.remove('hidden');
-                document.getElementById('currentUserRole').innerText = `ผู้ใช้: ${currentUser.username.toUpperCase()} (${currentUser.role})`;
-                loadDropdowns();
-                switchTab('projects');
+        function toggleFormSection() {
+            let body = document.getElementById("form-body");
+            if (body.style.maxHeight && body.style.maxHeight !== "0px") {
+                body.style.maxHeight = "0px";
             } else {
-                alert('⚠️ ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง');
+                body.style.maxHeight = body.scrollHeight + "px";
             }
         }
 
-        function handleLogout() {
-            currentUser = null;
-            document.getElementById('mainApp').classList.add('hidden');
-            document.getElementById('loginScreen').classList.remove('hidden');
-            document.getElementById('loginUser').value = '';
-            document.getElementById('loginPass').value = '';
-        }
-
-        function switchTab(tabId) {
-            if (tabId !== 'projects' && currentUser.role !== 'Admin') {
-                alert('⚠️ สิทธิ์ของคุณไม่สามารถเข้าถึงเมนูนี้ได้');
-                return;
-            }
-
-            ['inventory', 'formulas', 'projects'].forEach(id => {
-                document.getElementById(`section-${id}`).classList.add('hidden');
-                document.getElementById(`tab-${id}`).className = "py-2.5 px-4 font-medium text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap";
-            });
-
-            document.getElementById(`section-${tabId}`).classList.remove('hidden');
-            document.getElementById(`tab-${tabId}`).className = "py-2.5 px-4 font-medium border-b-2 border-blue-600 text-blue-600 focus:outline-none whitespace-nowrap";
-
-            if(tabId === 'inventory') { resetInvForm(); renderInventory(); }
-            if(tabId === 'formulas') { resetFormulaForm(); renderFormulas(); }
-            if(tabId === 'projects') loadDropdowns();
-        }
-
-        function switchReportTab(tab) {
-            const tabs = ['cutting-alu', 'cutting-glass', 'cutting-acc', 'bom', 'scrap'];
-            tabs.forEach(t => {
-                const btn = document.getElementById(`subtab-${t}`);
-                if(btn) {
-                    if(t === tab) {
-                        btn.className = "py-2 px-4 font-medium border-b-2 border-blue-600 text-blue-600 focus:outline-none whitespace-nowrap";
-                    } else {
-                        btn.className = "py-2 px-4 font-medium text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap";
-                    }
-                }
-            });
-
-            document.getElementById('cuttingResultArea').classList.add('hidden');
-            document.getElementById('bomReportArea').classList.add('hidden');
-            document.getElementById('scrapReportArea').classList.add('hidden');
-
-            if(tab === 'bom') {
-                document.getElementById('bomReportArea').classList.remove('hidden');
-            } else if(tab === 'scrap') {
-                document.getElementById('scrapReportArea').classList.remove('hidden');
-            } else {
-                document.getElementById('cuttingResultArea').classList.remove('hidden');
-                ['cutting-alu', 'cutting-glass', 'cutting-acc'].forEach(sub => {
-                    const contentDiv = document.getElementById(`tabContent-${sub}`);
-                    if(contentDiv) {
-                        if(sub === tab) {
-                            contentDiv.classList.remove('hidden');
-                        } else {
-                            contentDiv.classList.add('hidden');
-                        }
-                    }
-                });
-            }
-        }
-
-        function exportData(type) {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db[type], null, 2));
-            const downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", `${type}_backup.json`);
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            downloadAnchor.remove();
-        }
-
-        function importData(event, type) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    db[type] = JSON.parse(e.target.result);
-                    saveToLocalStorage(type);
-                    alert('นำเข้าข้อมูลสำเร็จ!');
-                    if(type === 'inventory') renderInventory();
-                    if(type === 'formulas') renderFormulas();
-                    loadDropdowns();
-                } catch(err) {
-                    alert('ไฟล์รูปแบบ JSON ไม่ถูกต้อง');
-                }
-            };
-            reader.readAsText(file);
-        }
-
-        function toggleSizeInputs() {
-            const type = document.getElementById('invType').value;
-            const sizeLength = document.getElementById('containerSizeLength');
-            const weightPerMeter = document.getElementById('containerWeightPerMeter');
-            const sizeWidth = document.getElementById('containerSizeWidth');
-            const sizeHeight = document.getElementById('containerSizeHeight');
-            const allowance = document.getElementById('containerAllowance');
-
-            if(type === 'Glass') {
-                sizeLength.classList.add('hidden');
-                weightPerMeter.classList.add('hidden');
-                sizeWidth.classList.remove('hidden');
-                sizeHeight.classList.remove('hidden');
-                allowance.classList.add('hidden');
-                document.getElementById('invUnit').value = 'แผ่น';
-            } else if(type === 'Aluminum') {
-                sizeLength.classList.remove('hidden');
-                weightPerMeter.classList.remove('hidden');
-                sizeWidth.classList.add('hidden');
-                sizeHeight.classList.add('hidden');
-                allowance.classList.remove('hidden');
-                document.getElementById('invUnit').value = 'เส้น';
-            } else {
-                sizeLength.classList.add('hidden');
-                weightPerMeter.classList.add('hidden');
-                sizeWidth.classList.add('hidden');
-                sizeHeight.classList.add('hidden');
-                allowance.classList.add('hidden');
-                document.getElementById('invUnit').value = 'ชุด';
-            }
-        }
-
-        function saveInventoryItem(e) {
-            e.preventDefault();
-            const editId = document.getElementById('editInvId').value;
-            const name = document.getElementById('invName').value.trim();
-            const type = document.getElementById('invType').value;
-            const remark = document.getElementById('invRemark').value.trim();
-            const unit = document.getElementById('invUnit').value.trim() || 'ชิ้น';
-            const quantity = parseFloat(document.getElementById('invQuantity').value) || 0;
-            const size = type === 'Aluminum' ? (parseFloat(document.getElementById('invSize').value) || 0) : 0;
-            const weightPerMeter = type === 'Aluminum' ? (parseFloat(document.getElementById('invWeightPerMeter').value) || 0) : 0;
-            const width = type === 'Glass' ? (parseFloat(document.getElementById('invWidth').value) || 0) : 0;
-            const height = type === 'Glass' ? (parseFloat(document.getElementById('invHeight').value) || 0) : 0;
-            const allowance = type === 'Aluminum' ? (parseFloat(document.getElementById('invAllowance').value) || 0) : 0;
-            const img = document.getElementById('invImg').value || 'https://via.placeholder.com/100?text=No+Image';
-
-            if(editId) {
-                const idx = db.inventory.findIndex(i => i.id == editId);
-                if(idx !== -1) db.inventory[idx] = { id: parseInt(editId), name, type, remark, unit, quantity, size, weightPerMeter, width, height, allowance, img };
-                alert('อัปเดตข้อมูลสินค้าสำเร็จ!');
-            } else {
-                db.inventory.push({ id: Date.now(), name, type, remark, unit, quantity, size, weightPerMeter, width, height, allowance, img });
-                alert('เพิ่มสินค้าในสต็อกสำเร็จ!');
-            }
-            saveToLocalStorage('inventory');
-            resetInvForm();
-            renderInventory();
-            loadDropdowns();
-        }
-
-        function resetInvForm() {
-            document.getElementById('inventoryForm').reset();
-            document.getElementById('editInvId').value = '';
-            document.getElementById('invType').value = 'Aluminum';
-            document.getElementById('invUnit').value = 'เส้น';
-            document.getElementById('invQuantity').value = '100';
-            document.getElementById('invWeightPerMeter').value = '0';
-            toggleSizeInputs();
-            document.getElementById('invFormTitle').innerText = "➕ เพิ่มรายการสินค้าในสต็อก";
-            document.getElementById('cancelInvEditBtn').classList.add('hidden');
-        }
-
-        function editInventoryItem(id) {
-            const item = db.inventory.find(i => i.id === id);
-            if(!item) return;
-            document.getElementById('editInvId').value = item.id;
-            document.getElementById('invName').value = item.name;
-            document.getElementById('invType').value = item.type;
-            document.getElementById('invRemark').value = item.remark || '';
-            document.getElementById('invUnit').value = item.unit || 'ชิ้น';
-            document.getElementById('invQuantity').value = item.quantity !== undefined ? item.quantity : 0;
-            document.getElementById('invSize').value = item.size || 0;
-            document.getElementById('invWeightPerMeter').value = item.weightPerMeter || 0;
-            document.getElementById('invWidth').value = item.width || 0;
-            document.getElementById('invHeight').value = item.height || 0;
-            document.getElementById('invAllowance').value = item.allowance || 0;
-            document.getElementById('invImg').value = item.img;
-            toggleSizeInputs();
-            document.getElementById('invFormTitle').innerText = `✏️ แก้ไขสินค้า: ${item.name}`;
-            document.getElementById('cancelInvEditBtn').classList.remove('hidden');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-function duplicateAndCreateNewItem(id) {
-            const item = db.inventory.find(i => i.id === id);
-            if(!item) return;
-
-            // 1. สร้าง Object ของรายการใหม่โดยโคลนข้อมูลเดิม
-            const newItem = {
-                ...item,
-                id: Date.now(), // สร้าง ID ใหม่ที่ไม่ซ้ำกัน
-                name: `${item.name} (สำเนา)`,
-                quantity: 0 // กำหนดจำนวนเริ่มต้นสำหรับรายการใหม่
-            };
-
-            // 2. เพิ่มรายการใหม่เข้าไปในฐานข้อมูลสต็อก
-            db.inventory.push(newItem);
-
-            // 3. บันทึกและรีเฟรชหน้าจอทันที (ใช้รูปแบบเดียวกับฟังก์ชันลบ)
-            saveToLocalStorage('inventory');
-            renderInventory();
-            if (typeof loadDropdowns === 'function') {
-                loadDropdowns(); // อัปเดต Dropdown ด้วยถ้าจำเป็น
-            }
-
-            alert(`✨ สร้างรายการวัสดุใหม่ "${newItem.name}" เรียบร้อยแล้ว!`);
-        }
-
-        function deleteInventoryItem(id) {
-            if(confirm('คุณต้องการลบสินค้านี้หรือไม่?')) {
-                db.inventory = db.inventory.filter(i => i.id !== id);
-                saveToLocalStorage('inventory');
-                renderInventory();
-                loadDropdowns();
-            }
-        }
-
-        function renderInventory() {
-            const search = document.getElementById('searchInventory').value.toLowerCase();
-            const category = document.getElementById('invCategoryFilter').value;
-            const perPageVal = document.getElementById('invItemsPerPage').value;
-
-            let filtered = db.inventory.filter(i => {
-                const matchSearch = i.name.toLowerCase().includes(search) || i.type.toLowerCase().includes(search) || (i.remark && i.remark.toLowerCase().includes(search));
-                const matchCategory = (category === 'all' || i.type === category);
-                return matchSearch && matchCategory;
-            });
-
-            let totalPages = 1;
-            let paginatedData = filtered;
-
-            if(perPageVal !== 'all') {
-                const limit = parseInt(perPageVal);
-                totalPages = Math.ceil(filtered.length / limit) || 1;
-                if(currentInvPage > totalPages) currentInvPage = totalPages;
-                const start = (currentInvPage - 1) * limit;
-                paginatedData = filtered.slice(start, start + limit);
-            }
-
-            const tbody = document.getElementById('inventoryTableBody');
-            tbody.innerHTML = paginatedData.map(item => {
-                let sizeText = item.type === 'Aluminum' ? `${item.size} มม. (${item.weightPerMeter || 0} กก./ม.)` : (item.type === 'Glass' ? `W: ${item.width} x H: ${item.height} มม.` : `-`);
-                return `
-                    <tr class="border-b text-sm hover:bg-gray-50">
-                        <td class="p-3"><img src="${item.img}" class="w-10 h-10 object-cover rounded"></td>
-                        <td class="p-3 font-medium">${item.name}</td>
-                        <td class="p-3"><span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">${item.type}</span></td>
-                        <td class="p-3 text-gray-600">${item.remark ? `<span class="bg-gray-100 px-2 py-0.5 rounded text-xs border">${item.remark}</span>` : `-`}</td>
-                        <td class="p-3 font-bold text-gray-700">${item.quantity || 0} ${item.unit || 'ชิ้น'}</td>
-                        <td class="p-3">${sizeText}</td>
-                        <td class="p-3">${item.allowance || 0} มม.</td>
-                        <td class="p-3 text-center space-x-1">
-                            <button onclick="editInventoryItem(${item.id})" class="bg-yellow-500 text-white px-2.5 py-1 rounded text-xs">แก้ไข</button>
-                            <button onclick="duplicateAndCreateNewItem(${item.id})" class="bg-blue-500 text-white px-2.5 py-1 rounded text-xs">ก๊อปปี้</button>
-                            <button onclick="deleteInventoryItem(${item.id})" class="bg-red-500 text-white px-2.5 py-1 rounded text-xs">ลบ</button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-
-            const pageContainer = document.getElementById('invPaginationContainer');
-            if(perPageVal !== 'all' && totalPages > 1) {
-                let pHTML = '';
-                for(let i = 1; i <= totalPages; i++) {
-                    pHTML += `<button onclick="currentInvPage=${i}; renderInventory();" class="px-3 py-1 rounded text-sm ${currentInvPage === i ? 'bg-blue-600 text-white' : 'bg-gray-200'}">${i}</button>`;
-                }
-                pageContainer.innerHTML = pHTML;
-            } else {
-                pageContainer.innerHTML = '';
-            }
-        }
-
-        function addMaterialRow(mat = '', qty = 1, formula = '', remark = '') {
-            const container = document.getElementById('dynamicMaterialList');
-            const div = document.createElement('div');
-            div.className = "flex gap-2 items-center flex-wrap md:flex-nowrap";
-            div.innerHTML = `
-                <select class="mat-select border rounded p-2 flex-1">${generateMaterialOptions(mat)}</select>
-                <div class="flex items-center gap-1">
-                    <input type="number" min="1" placeholder="จำนวน" value="${qty}" class="mat-qty border rounded p-2 w-24 text-center" required>
-                    <span class="text-xs text-gray-500 whitespace-nowrap">หน่วย</span>
-                </div>
-                <input type="text" placeholder="สูตร เช่น W - 45" value="${formula}" class="mat-formula border rounded p-2 w-40" required>
-                <input type="text" placeholder="หมายเหตุ (เช่น เสาข้าง)" value="${remark}" class="mat-remark border rounded p-2 w-40">
-                <button type="button" onclick="this.parentElement.remove()" class="bg-red-100 text-red-600 px-3 py-2 rounded text-sm">ลบ</button>
-            `;
-            container.appendChild(div);
-        }
-
-        function generateMaterialOptions(selected = '') {
-            return db.inventory.map(i => {
-                let displayName = i.name;
-                if (i.remark && i.remark.trim() !== "") {
-                    displayName += ` (${i.remark})`;
-                }
-                return `<option value="${i.name}" ${i.name === selected ? 'selected' : ''}>${displayName} (${i.type})</option>`;
-            }).join('');
-        }
-
-        function saveFullSet(e) {
-            e.preventDefault();
-            const editId = document.getElementById('editFormulaId').value;
-            const name = document.getElementById('newSetName').value.trim();
-            const rows = document.querySelectorAll('#dynamicMaterialList > div');
+        function initDashboard(role, name) {
+            currentUserRole = role;
+            document.getElementById("user-name").innerText = name || document.getElementById("email").value;
+            document.getElementById("user-role").innerText = role;
+            document.getElementById("login-section").style.display = "none";
+            document.getElementById("app-section").style.display = "block";
             
-            if(rows.length === 0) {
-                alert('กรุณาเพิ่มรายการวัสดุอย่างน้อย 1 รายการ');
-                return;
+            let btnAddStage = document.getElementById("btnAddStage");
+            if (btnAddStage) {
+                btnAddStage.style.display = (role === "admin") ? "inline-block" : "none";
             }
 
-            let items = [];
-            rows.forEach(r => {
-                items.push({ 
-                    mat: r.querySelector('.mat-select').value, 
-                    qty: parseFloat(r.querySelector('.mat-qty').value) || 1,
-                    formula: r.querySelector('.mat-formula').value,
-                    remark: r.querySelector('.mat-remark').value.trim()
-                });
-            });
-
-            if(editId) {
-                const idx = db.formulas.findIndex(f => f.id == editId);
-                if(idx !== -1) db.formulas[idx] = { id: parseInt(editId), name, items };
-                alert('อัปเดตชุดงานสำเร็จ!');
-            } else {
-                db.formulas.push({ id: Date.now(), name, items });
-                alert('บันทึกชุดงานสำเร็จ!');
-            }
-            saveToLocalStorage('formulas');
-            resetFormulaForm();
-            renderFormulas();
-            loadDropdowns();
-        }
-
-        function resetFormulaForm() {
-            document.getElementById('formulaForm').reset();
-            document.getElementById('editFormulaId').value = '';
-            document.getElementById('formTitle').innerText = "📐 สร้างชุดงานและเพิ่มรายการวัสดุประกอบ";
-            document.getElementById('cancelEditBtn').classList.add('hidden');
-            document.getElementById('dynamicMaterialList').innerHTML = '';
-            addMaterialRow();
-        }
-
-        function editFormula(id) {
-            const target = db.formulas.find(f => f.id === id);
-            if(!target) return;
-            document.getElementById('editFormulaId').value = target.id;
-            document.getElementById('newSetName').value = target.name;
-            document.getElementById('formTitle').innerText = `✏️ แก้ไขชุดงาน: ${target.name}`;
-            document.getElementById('cancelEditBtn').classList.remove('hidden');
-            
-            const container = document.getElementById('dynamicMaterialList');
-            container.innerHTML = '';
-            target.items.forEach(i => addMaterialRow(i.mat, i.qty || 1, i.formula, i.remark || ''));
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function copyFormula(id) {
-            const target = db.formulas.find(f => f.id === id);
-            if(!target) return;
-            db.formulas.push({
-                id: Date.now(),
-                name: target.name + " (คัดลอก)",
-                items: JSON.parse(JSON.stringify(target.items))
-            });
-            saveToLocalStorage('formulas');
-            renderFormulas();
-            loadDropdowns();
-            alert('คัดลอกชุดงานสำเร็จ!');
-        }
-
-        function deleteFormula(id) {
-            if(confirm('คุณต้องการลบชุดงานนี้หรือไม่?')) {
-                db.formulas = db.formulas.filter(f => f.id !== id);
-                saveToLocalStorage('formulas');
-                renderFormulas();
-                loadDropdowns();
-            }
-        }
-
-        function renderFormulas() {
-            const search = document.getElementById('searchFormula').value.toLowerCase();
-            const filtered = db.formulas.filter(f => f.name.toLowerCase().includes(search));
-            const perPageVal = document.getElementById('itemsPerPage').value;
-            
-            let paginatedData = filtered;
-            let totalPages = 1;
-
-            if(perPageVal !== 'all') {
-                const limit = parseInt(perPageVal);
-                totalPages = Math.ceil(filtered.length / limit) || 1;
-                if(currentFormulaPage > totalPages) currentFormulaPage = totalPages;
-                const start = (currentFormulaPage - 1) * limit;
-                paginatedData = filtered.slice(start, start + limit);
-            }
-
-            const container = document.getElementById('formulaList');
-            container.innerHTML = paginatedData.map(f => `
-                <div class="border p-4 rounded bg-gray-50 flex justify-between items-center">
-                    <div>
-                        <h4 class="font-bold text-blue-700 text-lg">${f.name}</h4>
-                        <p class="text-xs text-gray-500 mt-1">จำนวนส่วนประกอบ: ${f.items.length} รายการ</p>
-                    </div>
-                    <div class="flex gap-2">
-                        <button onclick="editFormula(${f.id})" class="bg-yellow-500 text-white px-3 py-1.5 rounded text-xs">แก้ไข</button>
-                        <button onclick="copyFormula(${f.id})" class="bg-blue-500 text-white px-3 py-1.5 rounded text-xs">ก๊อปปี้</button>
-                        <button onclick="deleteFormula(${f.id})" class="bg-red-500 text-white px-3 py-1.5 rounded text-xs">ลบ</button>
-                    </div>
-                </div>
-            `).join('');
-
-            const pageContainer = document.getElementById('paginationContainer');
-            if(perPageVal !== 'all' && totalPages > 1) {
-                let pHTML = '';
-                for(let i = 1; i <= totalPages; i++) {
-                    pHTML += `<button onclick="currentFormulaPage=${i}; renderFormulas();" class="px-3 py-1 rounded text-sm ${currentFormulaPage === i ? 'bg-blue-600 text-white' : 'bg-gray-200'}">${i}</button>`;
-                }
-                pageContainer.innerHTML = pHTML;
-            } else {
-                pageContainer.innerHTML = '';
-            }
-        }
-
-        function loadDropdowns() {
-            const itemSelect = document.getElementById('inputItemSet');
-            if(itemSelect) {
-                itemSelect.innerHTML = db.formulas.map(f => `<option value="${f.name}">${f.name}</option>`).join('');
-            }
-        }
-
-        function addProjectItemRow() {
-            const setName = document.getElementById('inputItemSet').value;
-            const W = parseFloat(document.getElementById('inputItemW').value);
-            const H = parseFloat(document.getElementById('inputItemH').value);
-            const qty = parseInt(document.getElementById('inputItemQty').value) || 1;
-
-            if(!setName || !W || !H || qty < 1) {
-                alert('⚠️ กรุณากรอกข้อมูลชุดงาน ความกว้าง ความสูง และจำนวนชุดให้ถูกต้องครบถ้วน');
-                return;
-            }
-
-            projectItems.push({ setName, W, H, qty });
-            document.getElementById('inputItemW').value = '';
-            document.getElementById('inputItemH').value = '';
-            document.getElementById('inputItemQty').value = '1';
-            renderProjectItems();
-        }
-
-        function removeProjectItem(index) {
-            projectItems.splice(index, 1);
-            renderProjectItems();
-        }
-
-        function renderProjectItems() {
-            const tbody = document.getElementById('projectItemsTableBody');
-            if(projectItems.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-gray-400">ยังไม่มีรายการช่องเปิด</td></tr>`;
-                return;
-            }
-            tbody.innerHTML = projectItems.map((item, idx) => `
-                <tr class="border-b hover:bg-gray-50">
-                    <td class="p-2.5 font-medium">${item.setName}</td>
-                    <td class="p-2.5">${item.W} มม.</td>
-                    <td class="p-2.5">${item.H} มม.</td>
-                    <td class="p-2.5 font-bold text-blue-600">${item.qty} ชุด</td>
-                    <td class="p-2.5 text-center"><button onclick="removeProjectItem(${idx})" class="bg-red-500 text-white px-2 py-1 rounded text-xs">ลบ</button></td>
-                </tr>
-            `).join('');
-        }
-
-        function getMaterialDisplayName(matName) {
-            let stockInfo = db.inventory.find(i => i.name === matName);
-            if (stockInfo && stockInfo.remark && stockInfo.remark.trim() !== "") {
-                return `${matName} (${stockInfo.remark})`;
-            }
-            return matName;
-        }
-
-        function generateCuttingList() {
-            const projName = document.getElementById('projName').value || "โครงการทั่วไป";
-            const kerf = parseFloat(document.getElementById('bladeKerf').value) || 0;
-            
-            if(projectItems.length === 0) {
-                alert('⚠️ กรุณาเพิ่มรายการช่องเปิดอย่างน้อย 1 รายการ');
-                return;
-            }
-
-            let aluminumDemands = {}; 
-            let glassDemands = {};    
-            let accessoryTotals = {}; 
-
-            try {
-                for (let projItem of projectItems) {
-                    const targetSet = db.formulas.find(f => f.name === projItem.setName);
-                    if(!targetSet) continue;
-
-                    for(let setIndex = 0; setIndex < projItem.qty; setIndex++) {
-                        for(let matItem of targetSet.items) {
-                            let calcVal = eval(matItem.formula.replace(/W/g, projItem.W).replace(/H/g, projItem.H));
-                            let stockInfo = db.inventory.find(i => i.name === matItem.mat);
-                            let type = stockInfo ? stockInfo.type : 'Accessory';
-                            let qtyMultiplier = matItem.qty || 1;
-                            let itemRemark = matItem.remark && matItem.remark.trim() !== "" ? matItem.remark : projItem.setName;
-
-                            if(type === 'Aluminum') {
-                                let cutLength = Math.round(calcVal);
-                                
-                                if (cutLength <= 0) {
-                                    alert(`❌ คำนวณไม่สำเร็จ!\n\nรายการ "${matItem.mat}" ในชุด "${projItem.setName}" ได้ผลลัพธ์ความยาวเป็น ${cutLength} มม. (ติดลบหรือเท่ากับ 0)\nกรุณาตรวจสอบขนาดช่องเปิดหรือสูตรคำนวณใหม่`);
-                                    return;
-                                }
-
-                                let allowance = stockInfo ? stockInfo.allowance : 0;
-                                let stockSize = stockInfo ? stockInfo.size : 6400;
-                                let usableStock = Math.max(1, stockSize - allowance);
-
-                                if (cutLength > usableStock) {
-                                    alert(`❌ ไม่สามารถทำรายการคำนวณได้!\n\nพบชิ้นงานอลูมิเนียม "${matItem.mat}" (ช่องเปิด: ${projItem.setName}, ขนาด W:${projItem.W} x H:${projItem.H} มม.)\nคำนวณความยาวตัดได้ ${cutLength} มม. ซึ่ง เกินความยาวสต๊อกตั้งต้น (${usableStock} มม.)\nกรุณาตรวจสอบขนาดช่องเปิด, สูตรคำนวณ หรือเพิ่มความยาวในสต็อก`);
-                                    return;
-                                }
-
-                                if(!aluminumDemands[matItem.mat]) aluminumDemands[matItem.mat] = [];
-                                for(let q = 0; q < qtyMultiplier; q++) {
-                                    aluminumDemands[matItem.mat].push({ 
-                                        length: cutLength, 
-                                        setName: itemRemark 
-                                    });
-                                }
-                            } else if(type === 'Glass') {
-                                let parts = matItem.formula.split('/');
-                                let gW = projItem.W, gH = projItem.H;
-                                if(parts.length >= 2) {
-                                    gW = Math.round(eval(parts[0].replace(/W/g, projItem.W).replace(/H/g, projItem.H)));
-                                    gH = Math.round(eval(parts[1].replace(/W/g, projItem.W).replace(/H/g, projItem.H)));
-                                } else {
-                                    gW = Math.round(calcVal);
-                                    gH = Math.round(calcVal);
-                                }
-
-                                if (gW <= 0 || gH <= 0) {
-                                    alert(`❌ คำนวณไม่สำเร็จ!\n\nรายการกระจก "${matItem.mat}" ในชุด "${projItem.setName}" ได้ขนาดเป็น ${gW} x ${gH} มม. (ติดลบหรือเท่ากับ 0)\nกรุณาตรวจสอบสูตรคำนวณ`);
-                                    return;
-                                }
-
-                                let stockW = stockInfo && stockInfo.width ? stockInfo.width : 2400;
-                                let stockH = stockInfo && stockInfo.height ? stockInfo.height : 3000;
-
-                                if (gW > stockW || gH > stockH) {
-                                    alert(`❌ ไม่สามารถทำรายการคำนวณได้!\n\nพบชิ้นงานกระจก "${matItem.mat}" (ช่องเปิด: ${projItem.setName}, ขนาด W:${projItem.W} x H:${projItem.H} มม.)\nคำนวณขนาดได้ ${gW} x ${gH} มม. ซึ่ง เกินขนาดแผ่นสต็อกตั้งต้น (${stockW} x ${stockH} มม.)\nกรุณาตรวจสอบขนาดช่องเปิด, สูตรคำนวณ หรือปรับขนาดแผ่นสต็อก`);
-                                    return;
-                                }
-
-                                if(!glassDemands[matItem.mat]) glassDemands[matItem.mat] = [];
-                                for(let q = 0; q < qtyMultiplier; q++) {
-                                    glassDemands[matItem.mat].push({ 
-                                        w: gW, 
-                                        h: gH, 
-                                        setName: itemRemark, 
-                                        sizeW: projItem.W, 
-                                        sizeH: projItem.H 
-                                    });
-                                }
-                            } else {
-                                let count = Math.round(calcVal * qtyMultiplier);
-                                if (count < 0) {
-                                    alert(`❌ คำนวณไม่สำเร็จ!\n\nรายการอุปกรณ์ "${matItem.mat}" ได้จำนวนติดลบ\nกรุณาตรวจสอบสูตรคำนวณ`);
-                                    return;
-                                }
-                                if(!accessoryTotals[matItem.mat]) accessoryTotals[matItem.mat] = { qty: 0, unit: stockInfo ? stockInfo.unit : 'ชุด' };
-                                accessoryTotals[matItem.mat].qty += count;
-                            }
-                        }
-                    }
-                }
-            } catch (err) {
-                alert('⚠️ เกิดข้อผิดพลาดในการประมวลผลสูตรคำนวณ (โปรดตรวจสอบความถูกต้องของสูตร เช่น W - 45)');
-                console.error(err);
-                return;
-            }
-
-            let bomAluminumSummary = {};
-            let allScrapsData = [];
-
-            for(let matName in aluminumDemands) {
-                let stockInfo = db.inventory.find(i => i.name === matName);
-                let stockSize = stockInfo ? stockInfo.size : 6400;
-                let allowance = stockInfo ? stockInfo.allowance : 0;
-                let weightPerMeter = stockInfo ? (stockInfo.weightPerMeter || 0) : 0;
-                let imgUrl = stockInfo ? stockInfo.img : 'https://via.placeholder.com/100?text=No+Image';
-                let usableStock = Math.max(1, stockSize - allowance);
-                let cuts = aluminumDemands[matName].sort((a,b) => b.length - a.length);
-                let displayMatName = getMaterialDisplayName(matName);
-
-                let bars = [];
-                cuts.forEach(cutObj => {
-                    let placed = false;
-                    for(let bar of bars) {
-                        let currentBarUsed = bar.reduce((sum, c) => sum + c.length, 0);
-                        let currentKerfs = bar.length * kerf;
-                        if(currentBarUsed + currentKerfs + cutObj.length + kerf <= usableStock) {
-                            bar.push(cutObj);
-                            placed = true;
-                            break;
-                        }
-                    }
-                    if(!placed) { bars.push([cutObj]); }
-                });
-
-                bars.forEach((bar, bIdx) => {
-                    let totalCutInBar = bar.reduce((sum, c) => sum + c.length, 0);
-                    let totalKerfInBar = bar.length * kerf;
-                    let remainingScrap = usableStock - (totalCutInBar + totalKerfInBar);
-                    if(remainingScrap > 0) {
-                        let scrapWeight = (remainingScrap / 1000) * weightPerMeter;
-                        allScrapsData.push({
-                            materialName: displayMatName,
-                            imgUrl: imgUrl,
-                            barIndex: bIdx + 1,
-                            scrapLength: remainingScrap,
-                            scrapWeight: scrapWeight,
-                            unit: stockInfo ? stockInfo.unit : 'เส้น'
-                        });
-                    }
-                });
-
-                let totalBarsCount = bars.length;
-                let totalBarLengthMeters = (totalBarsCount * usableStock) / 1000;
-                let totalWeight = totalBarLengthMeters * weightPerMeter;
-
-                bomAluminumSummary[matName] = { 
-                    count: totalBarsCount, 
-                    unit: stockInfo ? stockInfo.unit : 'เส้น', 
-                    size: stockSize, 
-                    weightPerMeter: weightPerMeter,
-                    totalWeight: totalWeight,
-                    displayName: displayMatName,
-                    imgUrl: imgUrl
-                };
-            }
-
-            let bomGlassSummary = {};
-            for(let matName in glassDemands) {
-                let glassList = glassDemands[matName];
-                let stockInfo = db.inventory.find(i => i.name === matName);
-                let unit = stockInfo ? stockInfo.unit : 'แผ่น';
-                let stockW = stockInfo && stockInfo.width ? stockInfo.width : 2400;
-                let stockH = stockInfo && stockInfo.height ? stockInfo.height : 3000;
-                let imgUrl = stockInfo ? stockInfo.img : 'https://via.placeholder.com/100?text=No+Image';
-                let displayMatName = getMaterialDisplayName(matName);
-
-                let itemsToCut = glassList.map((g, originalIndex) => ({
-                    w: g.w, h: g.h, setName: g.setName, sizeW: g.sizeW, sizeH: g.sizeH, label: `ชิ้นที่ ${originalIndex + 1}`
-                })).sort((a, b) => b.h - a.h);
-
-                let sheets = [];
-                itemsToCut.forEach(item => {
-                    let placed = false;
-                    for(let sheet of sheets) {
-                        let currentShelfY = sheet.currentShelfY || 0;
-                        let currentShelfMaxH = sheet.currentShelfMaxH || 0;
-                        let currentShelfX = sheet.currentShelfX || 0;
-
-                        if (item.w <= stockW - currentShelfX && item.h <= stockH - currentShelfY) {
-                            sheet.items.push({ w: item.w, h: item.h, x: currentShelfX, y: currentShelfY, setName: item.setName, label: item.label });
-                            sheet.currentShelfX += item.w;
-                            sheet.currentShelfMaxH = Math.max(sheet.currentShelfMaxH, item.h);
-                            placed = true;
-                            break;
-                        } else if (item.w <= stockW && currentShelfY + currentShelfMaxH + item.h <= stockH) {
-                            currentShelfY += currentShelfMaxH;
-                            sheet.currentShelfY = currentShelfY;
-                            sheet.currentShelfX = 0;
-                            sheet.currentShelfMaxH = item.h;
-                            sheet.items.push({ w: item.w, h: item.h, x: 0, y: currentShelfY, setName: item.setName, label: item.label });
-                            sheet.currentShelfX += item.w;
-                            placed = true;
-                            break;
-                        }
-                    }
-                    if (!placed) {
-                        sheets.push({
-                            items: [{ w: item.w, h: item.h, x: 0, y: 0, setName: item.setName, label: item.label }],
-                            currentShelfX: item.w, currentShelfY: 0, currentShelfMaxH: item.h
-                        });
-                    }
-                });
-                bomGlassSummary[matName] = { count: sheets.length, unit: unit, displayName: displayMatName, imgUrl: imgUrl };
-            }
-
-            let insufficientStockErrors = [];
-
-            for(let matName in bomAluminumSummary) {
-                let requiredCount = bomAluminumSummary[matName].count;
-                let stockInfo = db.inventory.find(i => i.name === matName);
-                let availableQty = stockInfo ? (stockInfo.quantity || 0) : 0;
-                let unitName = stockInfo ? stockInfo.unit : 'เส้น';
-
-                if(requiredCount > availableQty) {
-                    insufficientStockErrors.push(`- อลูมิเนียม "${bomAluminumSummary[matName].displayName}" ต้องการใช้ ${requiredCount} ${unitName} (ในสต็อกมีเพียง ${availableQty} ${unitName})`);
-                }
-            }
-
-            for(let matName in bomGlassSummary) {
-                let requiredCount = bomGlassSummary[matName].count;
-                let stockInfo = db.inventory.find(i => i.name === matName);
-                let availableQty = stockInfo ? (stockInfo.quantity || 0) : 0;
-                let unitName = stockInfo ? stockInfo.unit : 'แผ่น';
-
-                if(requiredCount > availableQty) {
-                    insufficientStockErrors.push(`- กระจก "${bomGlassSummary[matName].displayName}" ต้องการใช้ ${requiredCount} ${unitName} (ในสต็อกมีเพียง ${availableQty} ${unitName})`);
-                }
-            }
-
-            for(let matName in accessoryTotals) {
-                let requiredCount = accessoryTotals[matName].qty;
-                let stockInfo = db.inventory.find(i => i.name === matName);
-                let availableQty = stockInfo ? (stockInfo.quantity || 0) : 0;
-                let unitName = accessoryTotals[matName].unit;
-                let displayMatName = getMaterialDisplayName(matName);
-
-                if(requiredCount > availableQty) {
-                    insufficientStockErrors.push(`- อุปกรณ์ "${displayMatName}" ต้องการใช้ ${requiredCount} ${unitName} (ในสต็อกมีเพียง ${availableQty} ${unitName})`);
-                }
-            }
-
-            if(insufficientStockErrors.length > 0) {
-                alert(`❌ ไม่สามารถทำรายการคำนวณได้ เนื่องจากสินค้าในสต็อกไม่เพียงพอ:\n\n${insufficientStockErrors.join('\n')}\n\nกรุณาเพิ่มจำนวนสินค้าในสต็อกหรือปรับลดจำนวนชุดงานลง`);
-                return;
-            }
-
-            let totalSetsCount = projectItems.reduce((sum, item) => sum + item.qty, 0);
-            let headerInfoHTML = `<div class="bg-blue-50 p-4 rounded mb-4 border border-blue-200"><h4 class="font-bold text-blue-800 text-lg">โครงการ: ${projName}</h4><p class="text-sm text-gray-600">ระยะใบตัด (Blade Kerf): ${kerf} มม. | จำนวนช่องเปิดทั้งหมด: ${projectItems.length} รายการ (รวมเป็น ${totalSetsCount} ชุดงาน)</p></div>`;
-
-            let aluHTML = headerInfoHTML + `<div class="space-y-4"><h4 class="text-base font-bold text-blue-700 border-b pb-1">📐 1. วัสดุอลูมิเนียม (Bar Cut & Scrap Optimization)</h4>`;
-
-            for(let matName in aluminumDemands) {
-                let stockInfo = db.inventory.find(i => i.name === matName);
-                let stockSize = stockInfo ? stockInfo.size : 6400;
-                let allowance = stockInfo ? stockInfo.allowance : 0;
-                let usableStock = Math.max(1, stockSize - allowance);
-                let imgUrl = stockInfo ? stockInfo.img : 'https://via.placeholder.com/100?text=No+Image';
+            if (role === "admin" || role === "staff") {
+                document.getElementById("delivery-form-container").style.display = "block";
                 
-                let cuts = aluminumDemands[matName].sort((a,b) => b.length - a.length);
-                let displayMatName = getMaterialDisplayName(matName);
+                if (role === "staff") {
+                    document.getElementById("form-container").style.display = "none";
+                } else {
+                    document.getElementById("form-container").style.display = "block";
+                }
+            }
 
-                let bars = [];
-                cuts.forEach(cutObj => {
-                    let placed = false;
-                    for(let bar of bars) {
-                        let currentBarUsed = bar.reduce((sum, c) => sum + c.length, 0);
-                        let currentKerfs = bar.length * kerf;
-                        if(currentBarUsed + currentKerfs + cutObj.length + kerf <= usableStock) {
-                            bar.push(cutObj);
-                            placed = true;
-                            break;
-                        }
-                    }
-                    if(!placed) { bars.push([cutObj]); }
-                });
+            loadOrders();
+            loadDeliveries();
+            loadTechnicians();
+        }
 
-                let patternMapAlu = {};
-                bars.forEach(bar => {
-                    let signature = bar.map(c => `${c.setName}:${c.length}`).sort().join('|');
-                    if(!patternMapAlu[signature]) {
-                        patternMapAlu[signature] = { bar: bar, count: 0 };
-                    }
-                    patternMapAlu[signature].count++;
-                });
-
-                let barDetailsHTML = Object.values(patternMapAlu).map((pattern, idx) => {
-                    let bar = pattern.bar;
-                    let count = pattern.count;
-                    let totalCutInBar = bar.reduce((sum, c) => sum + c.length, 0);
-                    let totalKerfInBar = bar.length * kerf;
-                    let remainingScrap = usableStock - (totalCutInBar + totalKerfInBar);
-                    
-                    let visualSegmentsHTML = '';
-                    bar.forEach(c => {
-                        let widthPercent = (c.length / usableStock) * 100;
-                        visualSegmentsHTML += `
-                            <div class="h-full bg-white border-r border-gray-400 flex flex-col items-center justify-center overflow-hidden px-0.5" style="width: ${widthPercent}%;" title="${c.setName} : ${c.length} มม.">
-                                <span class="text-[9px] font-bold text-blue-700 leading-tight truncate w-full text-center">${c.setName}</span>
-                                <span class="text-[9px] text-gray-800 leading-tight font-semibold">${c.length}</span>
-                            </div>
-                        `;
+        function loadTechnicians() {
+            fetch(`${API_URL}?action=getTechnicians`)
+                .then(res => res.json())
+                .then(techs => {
+                    let select = document.getElementById("technician");
+                    select.innerHTML = '<option value="">-- เลือกช่าง --</option>';
+                    techs.forEach(t => {
+                        let opt = document.createElement("option");
+                        opt.value = t;
+                        opt.text = t;
+                        select.appendChild(opt);
                     });
-
-                    if(remainingScrap > 0) {
-                        let scrapPercent = (remainingScrap / usableStock) * 100;
-                        visualSegmentsHTML += `
-                            <div class="h-full bg-gray-300 flex flex-col items-center justify-center overflow-hidden px-0.5" style="width: ${scrapPercent}%;" title="เศษ Scrap : ${remainingScrap} มม.">
-                                <span class="text-[9px] font-bold text-gray-600 leading-tight truncate w-full text-center">เศษ</span>
-                                <span class="text-[9px] text-gray-600 leading-tight font-semibold">${remainingScrap}</span>
-                            </div>
-                        `;
-                    }
-
-                    return `
-                        <div class="bg-gray-50 p-2.5 rounded border text-sm space-y-1.5">
-                            <div class="flex justify-between items-center flex-wrap gap-2 text-xs">
-                                <span class="font-bold text-gray-700">รูปแบบการตัดที่ ${idx + 1} — <span class="text-blue-600 font-extrabold">ใช้ท่อนอลูมิเนียมรูปแบบนี้จำนวน ${count} เส้น</span> (ความยาวใช้งาน ${usableStock} มม.):</span>
-                                <span class="bg-orange-100 text-orange-800 px-2 py-0.5 rounded font-semibold">เศษ Scrap เหลือ: ${remainingScrap} มม.</span>
-                            </div>
-                            <div class="w-full h-8 bg-gray-200 rounded border border-gray-400 flex overflow-hidden shadow-inner relative">
-                                ${visualSegmentsHTML}
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-
-                aluHTML += `
-                    <div class="border rounded-lg p-3 bg-white shadow-sm space-y-2">
-                        <div class="flex items-center gap-3 border-b pb-2">
-                            <img src="${imgUrl}" class="w-10 h-10 object-cover rounded border">
-                            <div class="flex-grow flex justify-between items-center flex-wrap gap-2">
-                                <h5 class="font-bold text-gray-800 text-sm">${displayMatName}</h5>
-                                <span class="bg-blue-100 text-blue-800 px-2.5 py-1 rounded text-xs font-bold">ใช้ทั้งหมด: ${bars.length} เส้น (${stockSize} มม.)</span>
-                            </div>
-                        </div>
-                        <div class="space-y-2">${barDetailsHTML}</div>
-                    </div>
-                `;
-            }
-            aluHTML += `</div>`;
-            document.getElementById('cuttingOutputAlu').innerHTML = aluHTML;
-
-            let glassHTML = headerInfoHTML + `<div class="space-y-4"><h4 class="text-base font-bold text-blue-700 border-b pb-1">🪟 2. วัสดุกระจก (แผ่นสต็อก 1 แผ่น ตัดได้หลายชิ้น & ภาพจำลอง 2D พร้อมหมายเหตุ)</h4>`;
-
-            for(let matName in glassDemands) {
-                let glassList = glassDemands[matName];
-                let stockInfo = db.inventory.find(i => i.name === matName);
-                let unit = stockInfo ? stockInfo.unit : 'แผ่น';
-                let stockW = stockInfo && stockInfo.width ? stockInfo.width : 2400;
-                let stockH = stockInfo && stockInfo.height ? stockInfo.height : 3000;
-                let imgUrl = stockInfo ? stockInfo.img : 'https://via.placeholder.com/100?text=No+Image';
-                let displayMatName = getMaterialDisplayName(matName);
-
-                let itemsToCut = glassList.map((g, originalIndex) => ({
-                    w: g.w, h: g.h, setName: g.setName, sizeW: g.sizeW, sizeH: g.sizeH, label: `ชิ้นที่ ${originalIndex + 1}`
-                })).sort((a, b) => b.h - a.h);
-
-                let sheets = [];
-                itemsToCut.forEach(item => {
-                    let placed = false;
-                    for(let sheet of sheets) {
-                        let currentShelfY = sheet.currentShelfY || 0;
-                        let currentShelfMaxH = sheet.currentShelfMaxH || 0;
-                        let currentShelfX = sheet.currentShelfX || 0;
-
-                        if (item.w <= stockW - currentShelfX && item.h <= stockH - currentShelfY) {
-                            sheet.items.push({ w: item.w, h: item.h, x: currentShelfX, y: currentShelfY, setName: item.setName, label: item.label });
-                            sheet.currentShelfX += item.w;
-                            sheet.currentShelfMaxH = Math.max(sheet.currentShelfMaxH, item.h);
-                            placed = true;
-                            break;
-                        } else if (item.w <= stockW && currentShelfY + currentShelfMaxH + item.h <= stockH) {
-                            currentShelfY += currentShelfMaxH;
-                            sheet.currentShelfY = currentShelfY;
-                            sheet.currentShelfX = 0;
-                            sheet.currentShelfMaxH = item.h;
-                            sheet.items.push({ w: item.w, h: item.h, x: 0, y: currentShelfY, setName: item.setName, label: item.label });
-                            sheet.currentShelfX += item.w;
-                            placed = true;
-                            break;
-                        }
-                    }
-                    if (!placed) {
-                        sheets.push({
-                            items: [{ w: item.w, h: item.h, x: 0, y: 0, setName: item.setName, label: item.label }],
-                            currentShelfX: item.w, currentShelfY: 0, currentShelfMaxH: item.h
-                        });
-                    }
                 });
+        }
 
-                let patternMapGlass = {};
-                sheets.forEach(sheet => {
-                    let signature = sheet.items.map(i => `${i.setName}:${i.w}x${i.h}@${i.x},${i.y}`).sort().join('|');
-                    if(!patternMapGlass[signature]) {
-                        patternMapGlass[signature] = { sheet: sheet, count: 0 };
-                    }
-                    patternMapGlass[signature].count++;
-                });
+        function login() {
+    let email = document.getElementById("email").value, password = document.getElementById("password").value;
+    fetch(`${API_URL}?action=login&email=${email}&password=${password}`)
+        .then(res => res.json())
+        .then(data => { 
+            if(data.status==="success") { 
+                localStorage.setItem('userRole', data.role); 
+                // บันทึกชื่อจากคอลัมน์ D (data.name) ถ้าไม่มีให้ใช้อีเมลแทน
+                localStorage.setItem('userName', data.name || email);
+                initDashboard(data.role, data.name || email); 
+            } else {
+                alert(data.message);
+            } 
+        });
+}
 
-                let sheetDetailsHTML = Object.values(patternMapGlass).map((pattern, patternIdx) => {
-                    let sheet = pattern.sheet;
-                    let count = pattern.count;
+        function logout() { 
+            localStorage.removeItem('userRole'); 
+            localStorage.removeItem('userName');
+            location.reload(); 
+        }
 
-                    let placedItemsHTML = sheet.items.map(pi => {
-                        let leftPercent = (pi.x / stockW) * 100;
-                        let topPercent = (pi.y / stockH) * 100;
-                        let widthPercent = (pi.w / stockW) * 100;
-                        let heightPercent = (pi.h / stockH) * 100;
+        // --- PRODUCTION FUNCTIONS ---
+        function loadOrders() {
+            fetch(`${API_URL}?action=getOrders`)
+                .then(res => res.json())
+                .then(data => { allOrdersData = data; renderTable(data); });
+        }
 
-                        return `
-                            <div class="absolute bg-white border border-blue-600 rounded flex flex-col items-center justify-center p-0.5 shadow-sm overflow-hidden" 
-                                 style="left: ${leftPercent}%; top: ${topPercent}%; width: ${widthPercent}%; height: ${heightPercent}%;">
-                                <span class="text-[8px] font-bold text-blue-700 leading-tight truncate w-full text-center">${pi.setName}</span>
-                                <span class="text-[7px] text-gray-800 leading-tight">${pi.w}×${pi.h}</span>
-                            </div>
-                        `;
-                    }).join('');
+        function renderTable(data) {
+            let tbody = document.getElementById("order-table-body");
+            tbody.innerHTML = "";
+            let counts = { success: 0, process: 0, delayed: 0 };
+            let today = new Date().toISOString().split('T')[0];
+            let showAction = (currentUserRole === "admin" || currentUserRole === "staff");
+            let isAdmin = (currentUserRole === "admin");
 
-                    let listItemsText = sheet.items.map(pi => `<span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs border border-blue-200">▪️ ${pi.label} (${pi.setName}): ${pi.w} × ${pi.h} มม.</span>`).join(' ');
+            if(showAction) document.getElementById("action-header").style.display = "table-cell";
 
-                    return `
-                        <div class="bg-gray-50 p-3 rounded-lg border flex flex-col md:flex-row items-center gap-4">
-                            <div class="w-40 h-40 bg-gray-400 rounded-md relative flex-shrink-0 shadow-inner border border-gray-500 overflow-hidden" title="แผ่นสต็อกกระจกตั้งต้น">
-                                <span class="absolute top-1 left-2 text-[9px] text-white font-bold drop-shadow z-10">รูปแบบที่ ${patternIdx + 1} (${stockW}×${stockH})</span>
-                                ${placedItemsHTML}
-                            </div>
-                            <div class="flex-grow space-y-1.5 text-xs w-full">
-                                <div class="flex justify-between border-b pb-1">
-                                    <span class="text-gray-500 font-semibold">รูปแบบการตัดกระจกชุดนี้:</span>
-                                    <span class="font-bold text-blue-600 text-sm">ใช้แผ่นสต็อกรูปแบบนี้จำนวน ${count} ${unit}</span>
-                                </div>
-                                <div class="space-y-1">
-                                    <p class="font-medium text-gray-700">ชิ้นงานที่ตัดได้ในแผ่นนี้ (${sheet.items.length} ชิ้น):</p>
-                                    <div class="flex flex-wrap gap-1.5 pt-1">${listItemsText}</div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-
-                glassHTML += `
-                    <div class="border rounded-lg p-3 bg-white shadow-sm space-y-3">
-                        <div class="flex items-center gap-3 border-b pb-2">
-                            <img src="${imgUrl}" class="w-10 h-10 object-cover rounded border">
-                            <div class="flex-grow flex justify-between items-center">
-                                <h5 class="font-bold text-gray-800 text-sm">${displayMatName}</h5>
-                                <span class="bg-green-100 text-green-800 px-2.5 py-1 rounded text-xs font-bold">ต้องใช้แผ่นสต็อกทั้งหมด: ${sheets.length} ${unit}</span>
-                            </div>
-                        </div>
-                        <div class="space-y-3">${sheetDetailsHTML}</div>
-                    </div>
-                `;
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="${showAction ? 6 : 5}" class="text-center text-muted py-4">ไม่พบข้อมูลคำสั่งผลิต</td></tr>`;
+                return;
             }
-            glassHTML += `</div>`;
-            document.getElementById('cuttingOutputGlass').innerHTML = glassHTML;
 
-            let accHTML = headerInfoHTML + `<div class="space-y-4"><h4 class="text-base font-bold text-blue-700 border-b pb-1">🔩 3. วัสดุอุปกรณ์ / อะไหล่ (สรุปจำนวนรวม)</h4>`;
-            let accRows = '';
-            for(let matName in accessoryTotals) {
-                let acc = accessoryTotals[matName];
-                let stockInfo = db.inventory.find(i => i.name === matName);
-                let imgUrl = stockInfo ? stockInfo.img : 'https://via.placeholder.com/100?text=No+Image';
-                let displayMatName = getMaterialDisplayName(matName);
-
-                accRows += `
-                    <tr class="border-b text-sm">
-                        <td class="p-2.5 flex items-center gap-3">
-                            <img src="${imgUrl}" class="w-8 h-8 object-cover rounded border">
-                            <span class="font-medium">${displayMatName}</span>
-                        </td>
-                        <td class="p-2.5 text-right font-bold text-blue-600">${acc.qty} ${acc.unit}</td>
-                    </tr>
-                `;
-            }
-            accHTML += `
-                <div class="border rounded-lg overflow-hidden bg-white shadow-sm">
-                    <table class="w-full text-left">
-                        <thead><tr class="bg-gray-200 text-xs"><th class="p-2.5">ชื่ออุปกรณ์</th><th class="p-2.5 text-right">จำนวนที่ต้องใช้ทั้งหมด</th></tr></thead>
-                        <tbody>${accRows}</tbody>
-                    </table>
-                </div>
-            </div>`;
-            document.getElementById('cuttingOutputAcc').innerHTML = accHTML;
-
-            let bomHTML = `
-                <div class="bg-blue-50 p-4 rounded mb-4 border border-blue-200">
-                    <h4 class="font-bold text-blue-800 text-lg">โครงการ: ${projName}</h4>
-                    <p class="text-sm text-gray-600">สรุปรายการวัสดุรวมทั้งโครงการ (Bill of Materials - BOM) แยกตามประเภท พร้อมภาพวัสดุและคำนวณน้ำหนักอลูมิเนียม</p>
-                </div>
+            data.forEach(order => {
+                let isDelayed = order.status !== "เสร็จสิ้น" && order.stages.some(st => st.target && st.target.split('T')[0] < today && st.percent < 100);
+                let statusText = (order.totalProgress == 100 || order.status === "เสร็จสิ้น") ? "เสร็จสิ้น" : (isDelayed ? "ล่าช้า" : "กำลังดำเนินการ");
+                if (statusText === "เสร็จสิ้น") counts.success++; else if (statusText === "ล่าช้า") counts.delayed++; else counts.process++;
                 
-                <div class="space-y-6">
-                    <div class="border rounded-lg overflow-hidden bg-white shadow-sm">
-                        <div class="bg-blue-600 text-white px-4 py-2 font-bold text-sm">📐 1. วัสดุอลูมิเนียม</div>
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="bg-gray-100 text-xs text-gray-600 border-b">
-                                    <th class="p-2.5 w-16">รูปภาพ</th>
-                                    <th class="p-2.5">ชื่อรายการวัสดุ</th>
-                                    <th class="p-2.5">ขนาดสต็อก / น้ำหนัก (กก./ม.)</th>
-                                    <th class="p-2.5 text-right">จำนวนที่ต้องใช้</th>
-                                    <th class="p-2.5 text-right">น้ำหนักรวม (กก.)</th>
-                                </tr>
-                            </thead>
-                            <tbody class="text-sm">
-            `;
-            if(Object.keys(bomAluminumSummary).length === 0) {
-                bomHTML += `<tr><td colspan="5" class="text-center p-3 text-gray-400">ไม่มีรายการอลูมิเนียม</td></tr>`;
-            } else {
-                let totalProjectAluWeight = 0;
-                for(let m in bomAluminumSummary) {
-                    let item = bomAluminumSummary[m];
-                    totalProjectAluWeight += item.totalWeight;
-                    bomHTML += `
-                        <tr class="border-b">
-                            <td class="p-2.5"><img src="${item.imgUrl}" class="w-10 h-10 object-cover rounded border"></td>
-                            <td class="p-2.5 font-medium">${item.displayName}</td>
-                            <td class="p-2.5">${item.size} มม. (${item.weightPerMeter} กก./ม.)</td>
-                            <td class="p-2.5 text-right font-bold text-blue-600">${item.count} ${item.unit}</td>
-                            <td class="p-2.5 text-right font-bold text-gray-700">${item.totalWeight.toFixed(3)} กก.</td>
-                        </tr>
-                    `;
-                }
-                bomHTML += `
-                    <tr class="bg-gray-50 font-bold">
-                        <td colspan="4" class="p-2.5 text-right">น้ำหนักรวมอลูมิเนียมทั้งโครงการ:</td>
-                        <td class="p-2.5 text-right text-blue-700">${totalProjectAluWeight.toFixed(3)} กก.</td>
-                    </tr>
-                `;
-            }
-            bomHTML += `            </tbody>
-                        </table>
-                    </div>
+                let stagesHtml = order.stages.map(st => {
+                    let p = Number(st.percent) || 0;
+                    return `
+                        <div class="minimal-stage">
+                            <div class="d-flex justify-content-between">
+                                <span class="fw-semibold text-dark">${st.name}</span>
+                                <span class="text-primary fw-bold">${p}%</span>
+                            </div>
+                            <div class="text-muted" style="font-size: 11px;">
+                                เริ่ม: ${st.start_be || '-'} | กำหนด: ${st.target_be || '-'} | เสร็จจริง: ${st.actual_be || '-'}
+                            </div>
+                        </div>`;
+                }).join('');
+                
+                let docLinkBtn = order.docLink ? `<br><a href="${order.docLink}" target="_blank" class="btn btn-outline-secondary btn-sm py-0 px-1 mt-1" style="font-size: 10px;">📄 เอกสาร</a>` : "";
+                let techText = order.technician ? `<br><small class="text-primary fw-semibold">ช่าง: ${order.technician}</small>` : `<br><small class="text-muted">ช่าง: -</small>`;
 
-                    <div class="border rounded-lg overflow-hidden bg-white shadow-sm">
-                        <div class="bg-green-600 text-white px-4 py-2 font-bold text-sm">🪟 2. วัสดุกระจก</div>
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="bg-gray-100 text-xs text-gray-600 border-b">
-                                    <th class="p-2.5 w-16">รูปภาพ</th>
-                                    <th class="p-2.5">ชื่อรายการวัสดุ</th>
-                                    <th class="p-2.5 text-right">จำนวนที่ต้องใช้</th>
-                                </tr>
-                            </thead>
-                            <tbody class="text-sm">
-            `;
-            if(Object.keys(bomGlassSummary).length === 0) {
-                bomHTML += `<tr><td colspan="3" class="text-center p-3 text-gray-400">ไม่มีรายการกระจก</td></tr>`;
-            } else {
-                for(let m in bomGlassSummary) {
-                    let item = bomGlassSummary[m];
-                    bomHTML += `
-                        <tr class="border-b">
-                            <td class="p-2.5"><img src="${item.imgUrl}" class="w-10 h-10 object-cover rounded border"></td>
-                            <td class="p-2.5 font-medium">${item.displayName}</td>
-                            <td class="p-2.5 text-right font-bold text-green-600">${item.count} ${item.unit}</td>
-                        </tr>
-                    `;
+                let row = `<tr>
+                    <td><b>${order.orderId}</b><br><small class="text-muted">สั่ง: ${order.orderDate || '-'}</small>${docLinkBtn}</td>
+                    <td>${order.productName}<br><small class="text-muted">จำนวนชุด: ${order.quantity}</small>${techText}</td>
+                    <td><div class="progress shadow-sm" style="height: 16px; background-color: #e2e8f0;"><div class="progress-bar bg-primary fw-bold" style="width: ${order.totalProgress}%; font-size: 10px;">${order.totalProgress}%</div></div></td>
+                    <td><span class="badge ${statusText === 'เสร็จสิ้น' ? 'bg-success' : (statusText === 'ล่าช้า' ? 'bg-danger' : 'bg-warning text-dark')}">${statusText}</span></td>
+                    <td>${stagesHtml}</td>`;
+                
+                if(showAction) {
+                    let editBtnText = (currentUserRole === "staff") ? "อัปเดตงาน" : "แก้ไข";
+                    row += `<td>
+                        <div class="d-flex gap-1 justify-content-center">
+                            <button class="btn btn-outline-primary btn-sm py-1 px-2" style="font-size: 12px;" onclick="editOrderById('${order.orderId}')">${editBtnText}</button>`;
+                    if(isAdmin) {
+                        row += `<button class="btn btn-outline-danger btn-sm py-1 px-2" style="font-size: 12px;" onclick="deleteOrderById('${order.orderId}')">ลบ</button>`;
+                    }
+                    row += `</div></td>`;
                 }
-            }
-            bomHTML += `            </tbody>
-                        </table>
-                    </div>
 
-                    <div class="border rounded-lg overflow-hidden bg-white shadow-sm">
-                        <div class="bg-orange-600 text-white px-4 py-2 font-bold text-sm">🔩 3. วัสดุอุปกรณ์ / อะไหล่</div>
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="bg-gray-100 text-xs text-gray-600 border-b">
-                                    <th class="p-2.5 w-16">รูปภาพ</th>
-                                    <th class="p-2.5">ชื่อรายการอุปกรณ์</th>
-                                    <th class="p-2.5 text-right">จำนวนที่ต้องใช้</th>
-                                </tr>
-                            </thead>
-                            <tbody class="text-sm">
-            `;
-            if(Object.keys(accessoryTotals).length === 0) {
-                bomHTML += `<tr><td colspan="3" class="text-center p-3 text-gray-400">ไม่มีรายการอุปกรณ์</td></tr>`;
-            } else {
-                for(let m in accessoryTotals) {
-                    let stockInfo = db.inventory.find(i => i.name === m);
-                    let imgUrl = stockInfo ? stockInfo.img : 'https://via.placeholder.com/100?text=No+Image';
-                    let displayMatName = getMaterialDisplayName(m);
-                    bomHTML += `
-                        <tr class="border-b">
-                            <td class="p-2.5"><img src="${imgUrl}" class="w-10 h-10 object-cover rounded border"></td>
-                            <td class="p-2.5 font-medium">${displayMatName}</td>
-                            <td class="p-2.5 text-right font-bold text-orange-600">${accessoryTotals[m].qty} ${accessoryTotals[m].unit}</td>
-                        </tr>
-                    `;
+                tbody.innerHTML += row + "</tr>";
+            });
+            document.getElementById("count-success").innerText = counts.success;
+            document.getElementById("count-process").innerText = counts.process;
+            document.getElementById("count-delayed").innerText = counts.delayed;
+        }
+
+        function filterOrders() {
+            let startDate = document.getElementById("filter-start-date").value;
+            let endDate = document.getElementById("filter-end-date").value;
+            let orderIdFilter = document.getElementById("filter-order-id").value.trim().toLowerCase();
+            let techFilter = document.getElementById("filter-tech").value.trim().toLowerCase();
+            let s = document.getElementById("filter-status").value;
+            let today = new Date().toISOString().split('T')[0];
+
+            let filtered = allOrdersData.filter(o => {
+                let matchDate = true;
+                let orderDate = o.rawOrderDate;
+                
+                if (startDate && endDate) {
+                    matchDate = (orderDate >= startDate && orderDate <= endDate);
+                } else if (startDate) {
+                    matchDate = (orderDate >= startDate);
+                } else if (endDate) {
+                    matchDate = (orderDate <= endDate);
                 }
-            }
-            bomHTML += `            </tbody>
-                        </table>
-                    </div>
-                </div>`;
-            document.getElementById('bomOutputContent').innerHTML = bomHTML;
 
-            let scrapHTML = `
-                <div class="bg-blue-50 p-4 rounded mb-4 border border-blue-200">
-                    <h4 class="font-bold text-blue-800 text-lg">โครงการ: ${projName}</h4>
-                    <p class="text-sm text-gray-600">รายงานสรุปเศษอลูมิเนียมเหลือใช้ (Scrap Report) จากกระบวนการตัด พร้อมภาพวัสดุและน้ำหนักเศษ</p>
-                </div>
-                <div class="border rounded-lg overflow-hidden bg-white shadow-sm">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-gray-200 text-xs">
-                                <th class="p-2.5 w-16">รูปภาพ</th>
-                                <th class="p-2.5">รายการอลูมิเนียม</th>
-                                <th class="p-2.5">ท่อนที่ / แท่งที่</th>
-                                <th class="p-2.5 text-right">ขนาดความยาวเศษ (มม.)</th>
-                                <th class="p-2.5 text-right">น้ำหนักเศษ (กก.)</th>
-                            </tr>
-                        </thead>
-                        <tbody class="text-sm">
-            `;
-            if(allScrapsData.length === 0) {
-                scrapHTML += `<tr><td colspan="5" class="text-center p-4 text-gray-400">ไม่มีเศษ Scrap เหลือจากกระบวนการตัด</td></tr>`;
+                let matchOrderId = true;
+                if (orderIdFilter !== "") {
+                    let idVal = (o.orderId || "").toLowerCase();
+                    matchOrderId = idVal.includes(orderIdFilter);
+                }
+
+                let matchTech = true;
+                if (techFilter !== "") {
+                    let techName = (o.technician || "").toLowerCase();
+                    matchTech = techName.includes(techFilter);
+                }
+
+                let isDelayed = o.status !== "เสร็จสิ้น" && o.stages.some(st => st.target && st.target.split('T')[0] < today && st.percent < 100);
+                let statusText = (o.totalProgress == 100 || o.status === "เสร็จสิ้น") ? "เสร็จสิ้น" : (isDelayed ? "ล่าช้า" : "กำลังดำเนินการ");
+                let matchS = (s === "ทั้งหมด" || statusText === s);
+
+                return matchDate && matchOrderId && matchTech && matchS;
+            });
+
+            renderTable(filtered);
+        }
+
+        function editOrderById(id) {
+            let order = allOrdersData.find(o => o.orderId === id);
+            if (!order) return;
+            
+            document.getElementById("form-container").style.display = "block";
+            
+            let isStaff = (currentUserRole === "staff");
+            if (isStaff) {
+                document.getElementById("form-title").innerText = "อัปเดตวันที่เสร็จจริง (Staff)";
             } else {
-                let totalScrapLength = 0;
-                let totalScrapWeight = 0;
-                allScrapsData.forEach(s => {
-                    totalScrapLength += s.scrapLength;
-                    totalScrapWeight += s.scrapWeight;
-                    scrapHTML += `
-                        <tr class="border-b">
-                            <td class="p-2.5"><img src="${s.imgUrl}" class="w-10 h-10 object-cover rounded border"></td>
-                            <td class="p-2.5 font-medium">${s.materialName}</td>
-                            <td class="p-2.5">ท่อนที่ ${s.barIndex}</td>
-                            <td class="p-2.5 text-right font-semibold text-gray-700">${s.scrapLength} มม.</td>
-                            <td class="p-2.5 text-right font-bold text-orange-600">${s.scrapWeight.toFixed(3)} กก.</td>
-                        </tr>
-                    `;
+                document.getElementById("form-title").innerText = "จัดการคำสั่งผลิต";
+            }
+
+            document.getElementById("originalOrderId").value = order.orderId;
+            
+            document.getElementById("orderId").value = order.orderId;
+            document.getElementById("productName").value = order.productName;
+            document.getElementById("quantity").value = order.quantity;
+            document.getElementById("docLink").value = order.docLink || "";
+            document.getElementById("technician").value = order.technician || ""; 
+            
+            document.getElementById("orderDate").value = convertToBeConvertedDate(order.rawOrderDate || order.orderDate);
+            
+            document.getElementById("orderId").disabled = isStaff;
+            document.getElementById("productName").disabled = isStaff;
+            document.getElementById("quantity").disabled = isStaff;
+            document.getElementById("orderDate").disabled = isStaff;
+            document.getElementById("docLink").disabled = isStaff;
+            document.getElementById("technician").disabled = isStaff;
+
+            document.getElementById("stages-container").innerHTML = "";
+            order.stages.forEach(st => addStageRow(st.name, st.start, st.target, st.actual, st.percent));
+            
+            let body = document.getElementById("form-body");
+            body.style.maxHeight = body.scrollHeight + "px";
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        function addStageRow(n="", st="", ta="", ac="", p=0) {
+            let div = document.createElement("div"); div.className = "row g-2 mb-2 stage-row align-items-center";
+            
+            let isStaff = (currentUserRole === "staff");
+            let disabledAttr = isStaff ? "disabled" : "";
+
+            let deleteBtnHtml = (currentUserRole === "admin") 
+                ? `<button type="button" class="btn btn-outline-danger btn-sm w-100 py-0" style="font-size: 11px;" onclick="this.parentElement.parentElement.remove(); calculateTotalProgress();">×</button>`
+                : `<span class="text-muted text-center d-block">-</span>`;
+
+            div.innerHTML = `
+                <div class="col-md-3"><input type="text" class="form-control form-control-sm s-name" placeholder="ชื่อขั้นตอน" value="${n}" ${disabledAttr}></div>
+                <div class="col-md-2"><input type="date" class="form-control form-control-sm s-start" value="${convertToBeConvertedDate(st)}" title="วันที่เริ่ม" ${disabledAttr}></div>
+                <div class="col-md-2"><input type="date" class="form-control form-control-sm s-target" value="${convertToBeConvertedDate(ta)}" title="วันที่คาดว่าจะเสร็จ" ${disabledAttr}></div>
+                <div class="col-md-2"><input type="date" class="form-control form-control-sm s-actual" value="${convertToBeConvertedDate(ac)}" title="วันที่เสร็จจริง"></div>
+                <div class="col-md-2"><input type="number" class="form-control form-control-sm s-percent" value="${p}" min="0" max="100" placeholder="%" oninput="calculateTotalProgress()" title="% หากจบจริง" ${disabledAttr}></div>
+                <div class="col-md-1">${deleteBtnHtml}</div>`;
+                
+            document.getElementById("stages-container").appendChild(div);
+            
+            let body = document.getElementById("form-body");
+            if (body.style.maxHeight && body.style.maxHeight !== "0px") {
+                body.style.maxHeight = body.scrollHeight + "px";
+            }
+        }
+
+        function calculateTotalProgress() {
+            let rows = document.querySelectorAll(".stage-row"); 
+            let sum = 0;
+            rows.forEach(r => {
+                let actualDate = r.querySelector(".s-actual").value;
+                let percentVal = Number(r.querySelector(".s-percent").value) || 0;
+                if (actualDate && actualDate.trim() !== "") {
+                    sum += percentVal;
+                }
+            });
+            return sum > 100 ? 100 : sum;
+        }
+
+        function saveOrder() {
+            let originalId = document.getElementById("originalOrderId").value;
+            let isStaff = (currentUserRole === "staff");
+
+            if (isStaff && (!originalId || originalId.trim() === "")) {
+                alert("Staff ไม่มีสิทธิ์สร้างรายการสั่งผลิตใหม่ (แก้ไขได้เฉพาะวันที่เสร็จจริงจากปุ่มแก้ไขในตารางเท่านั้น)");
+                return;
+            }
+
+            let orderIdInput = document.getElementById("orderId");
+            if (!orderIdInput.value || orderIdInput.value.trim() === "") {
+                alert("กรุณากรอกรหัสสั่งผลิตก่อนบันทึกข้อมูล!");
+                orderIdInput.focus();
+                return;
+            }
+
+            let stages = Array.from(document.querySelectorAll(".stage-row")).map(r => ({
+                name: r.querySelector(".s-name").value, 
+                start: r.querySelector(".s-start").value,
+                target: r.querySelector(".s-target").value, 
+                actual: r.querySelector(".s-actual").value,
+                percent: Number(r.querySelector(".s-percent").value)
+            }));
+            
+            let data = { 
+                action: "saveOrder", 
+                originalOrderId: originalId, 
+                orderId: orderIdInput.value.trim(), 
+                productName: document.getElementById("productName").value, 
+                quantity: document.getElementById("quantity").value, 
+                orderDate: document.getElementById("orderDate").value, 
+                docLink: document.getElementById("docLink").value,
+                technician: document.getElementById("technician").value,
+                totalProgress: calculateTotalProgress(), 
+                stages: stages 
+            };
+
+            fetch(API_URL, { method: "POST", body: JSON.stringify(data) })
+                .then(res => res.json())
+                .then(() => { 
+                    alert("บันทึกสำเร็จ!"); 
+                    loadOrders(); 
+                    document.getElementById("originalOrderId").value = ""; 
+                    orderIdInput.value = "";
+                    document.getElementById("productName").value = "";
+                    document.getElementById("quantity").value = "";
+                    document.getElementById("docLink").value = "";
+                    document.getElementById("technician").value = ""; 
+                    document.getElementById("orderDate").value = new Date().toISOString().split('T')[0];
+                    resetStagesForm();
+                    
+                    if(isStaff) {
+                        document.getElementById("form-container").style.display = "none";
+                    }
                 });
-                scrapHTML += `
-                    <tr class="bg-gray-50 font-bold">
-                        <td colspan="3" class="p-2.5 text-right">รวมทั้งหมด:</td>
-                        <td class="p-2.5 text-right text-gray-700">${totalScrapLength} มม. (~${(totalScrapLength/1000).toFixed(2)} เมตร)</td>
-                        <td class="p-2.5 text-right text-orange-700">${totalScrapWeight.toFixed(3)} กก.</td>
-                    </tr>
-                `;
-            }
-            scrapHTML += `</tbody></table></div>`;
-            document.getElementById('scrapOutputContent').innerHTML = scrapHTML;
+        }
 
-            document.getElementById('reportSectionContainer').classList.remove('hidden');
-            switchReportTab('cutting-alu');
+        function resetStagesForm() { 
+            document.getElementById("stages-container").innerHTML = ""; 
+            addStageRow("ลงแผนผลิต", "", "", "", 10); 
+            addStageRow("เบิกของ", "", "", "", 30); 
+            addStageRow("ตัดประกอบ", "", "", "", 50);
+            addStageRow("ส่งของ", "", "", "", 10); 
+        }
+
+        function deleteOrderById(id) {
+            if(!id) return;
+            if(confirm(`ยืนยันการลบคำสั่งผลิตรหัส: ${id} ?`)) {
+                fetch(`${API_URL}?action=deleteOrder&orderId=${id}`)
+                    .then(res => res.json())
+                    .then(() => { 
+                        alert("ลบสำเร็จ!"); 
+                        loadOrders(); 
+                        resetStagesForm();
+                    });
+            }
+        }
+
+        // --- DELIVERY FUNCTIONS ---
+        function loadDeliveries() {
+            fetch(`${API_URL}?action=getDeliveries`)
+                .then(res => res.json())
+                .then(data => { allDeliveriesData = data; renderDeliveryTable(data); })
+                .catch(() => { allDeliveriesData = []; renderDeliveryTable([]); });
+        }
+
+        function renderDeliveryTable(data) {
+            let tbody = document.getElementById("delivery-table-body");
+            tbody.innerHTML = "";
+            
+            let showAction = (currentUserRole === "admin" || currentUserRole === "staff");
+            let isAdmin = (currentUserRole === "admin");
+
+            let actionHeader = document.getElementById("del-action-header");
+            if (actionHeader) {
+                actionHeader.style.display = showAction ? "table-cell" : "none";
+            }
+
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="${showAction ? 7 : 6}" class="text-center text-muted py-4">ไม่พบข้อมูลการส่งของ</td></tr>`;
+                return;
+            }
+
+            data.forEach(item => {
+                let badgeClass = "bg-warning text-dark";
+                if(item.status === "ส่งสำเร็จ") badgeClass = "bg-success";
+                else if(item.status === "ตีกลับ/มีปัญหา") badgeClass = "bg-danger";
+
+                let row = `<tr>
+                    <td>${item.deliveryDate || '-'}</td>
+                    <td><b>${item.invoiceNo || '-'}</b></td>
+                    <td>${item.customer || '-'}</td>
+                    <td>${item.productDetails || '-'}</td>
+                    <td>${item.carrier || '-'}<br><small class="text-muted">${item.trackingNo || '-'}</small></td>
+                    <td><span class="badge ${badgeClass}">${item.status || 'กำลังจัดส่ง'}</span></td>`;
+                
+                if (showAction) {
+                    row += `<td>
+                        <div class="d-flex gap-1 justify-content-center">
+                            <button class="btn btn-outline-primary btn-sm py-1 px-2" style="font-size: 12px;" onclick='editDeliveryItem(${JSON.stringify(item)})' title="แก้ไข">แก้ไข</button>`;
+                    
+                    if (isAdmin) {
+                        row += `<button class="btn btn-outline-danger btn-sm py-1 px-2" style="font-size: 12px;" onclick="confirmDeleteDelivery('${item.deliveryId || item.invoiceNo}')" title="ลบ">ลบ</button>`;
+                    }
+                    
+                    row += `</div></td>`;
+                }
+
+                tbody.innerHTML += row + "</tr>";
+            });
+        }
+		
+        function confirmDeleteDelivery(deliveryId) {
+            if (confirm("คุณต้องการลบรายการส่งของนี้ใช่หรือไม่?")) {
+                fetch(`${API_URL}?action=deleteDelivery&deliveryId=${deliveryId}`)
+                    .then(res => res.json())
+                    .then(res => {
+                        if (res.status === "success") {
+                            alert("ลบข้อมูลสำเร็จ!");
+                            loadDeliveries();
+                        } else {
+                            alert("เกิดข้อผิดพลาด: " + res.message);
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Error:", err);
+                        alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
+                    });
+            }
+        }
+
+        function filterDeliveries() {
+            let filterDate = document.getElementById("filter-del-date").value;
+            let keyword = document.getElementById("filter-del-search").value.toLowerCase();
+            let statusFilter = document.getElementById("filter-del-status").value;
+
+            let filtered = allDeliveriesData.filter(item => {
+                let matchDate = true;
+                if (filterDate) {
+                    matchDate = (item.rawDeliveryDate === filterDate);
+                }
+
+                let matchKw = (
+                    (item.invoiceNo || "").toLowerCase().includes(keyword) ||
+                    (item.customer || "").toLowerCase().includes(keyword) ||
+                    (item.trackingNo || "").toLowerCase().includes(keyword) ||
+                    (item.productDetails || "").toLowerCase().includes(keyword)
+                );
+                let matchStatus = (statusFilter === "ทั้งหมด" || item.status === statusFilter);
+                
+                return matchDate && matchKw && matchStatus;
+            });
+
+            renderDeliveryTable(filtered);
+        }
+
+        function saveDelivery() {
+            let data = {
+                action: "saveDelivery",
+                deliveryId: document.getElementById("deliveryId").value,
+                deliveryDate: document.getElementById("deliveryDate").value,
+                invoiceNo: document.getElementById("delInvoiceNo").value,
+                customer: document.getElementById("delCustomer").value,
+                productDetails: document.getElementById("delProductDetails").value,
+                carrier: document.getElementById("delCarrier").value,
+                trackingNo: document.getElementById("delTrackingNo").value,
+                status: document.getElementById("delStatus").value
+            };
+
+            if(!data.invoiceNo) { alert("กรุณากรอกเลขที่ใบส่งของ"); return; }
+
+            fetch(API_URL, { method: "POST", body: JSON.stringify(data) })
+                .then(res => res.json())
+                .then(() => {
+                    alert("บันทึกข้อมูลการส่งของสำเร็จ!");
+                    resetDeliveryForm();
+                    loadDeliveries();
+                });
+        }
+
+        function editDeliveryItem(item) {
+            document.getElementById("deliveryId").value = item.deliveryId || item.invoiceNo;
+            document.getElementById("deliveryDate").value = convertToBeConvertedDate(item.deliveryDate);
+            document.getElementById("delInvoiceNo").value = item.invoiceNo || "";
+            document.getElementById("delCustomer").value = item.customer || "";
+            document.getElementById("delProductDetails").value = item.productDetails || "";
+            document.getElementById("delCarrier").value = item.carrier || "";
+            document.getElementById("delTrackingNo").value = item.trackingNo || "";
+            document.getElementById("delStatus").value = item.status || "กำลังจัดส่ง";
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        function resetDeliveryForm() {
+            document.getElementById("deliveryId").value = "";
+            document.getElementById("deliveryDate").value = new Date().toISOString().split('T')[0];
+            document.getElementById("delInvoiceNo").value = "";
+            document.getElementById("delCustomer").value = "";
+            document.getElementById("delProductDetails").value = "";
+            document.getElementById("delCarrier").value = "";
+            document.getElementById("delTrackingNo").value = "";
+            document.getElementById("delStatus").value = "กำลังจัดส่ง";
+        }
+
+        // --- MODAL ORDER SELECTION FUNCTIONS ---
+        function loadModalOrders() {
+            renderModalTable(allOrdersData);
+        }
+
+        function renderModalTable(data) {
+            let tbody = document.getElementById("modal-order-table-body");
+            tbody.innerHTML = "";
+
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">ไม่พบรายการคำสั่งผลิต</td></tr>`;
+                return;
+            }
+
+            data.forEach(order => {
+                let row = `<tr>
+                    <td><b>${order.orderId}</b></td>
+                    <td>${order.productName}</td>
+                    <td>${order.quantity} ชุด</td>
+                    <td>${order.technician || '-'}</td>
+                    <td><button type="button" class="btn btn-primary btn-sm w-100 py-1" onclick='selectOrderForDelivery(${JSON.stringify(order)})'>เลือก</button></td>
+                </tr>`;
+                tbody.innerHTML += row;
+            });
+        }
+
+        function filterModalOrders() {
+            let keyword = document.getElementById("modal-search-order").value.toLowerCase();
+            let filtered = allOrdersData.filter(o => 
+                (o.orderId || "").toLowerCase().includes(keyword) || 
+                (o.productName || "").toLowerCase().includes(keyword)
+            );
+            renderModalTable(filtered);
+        }
+
+        function selectOrderForDelivery(order) {
+            document.getElementById("delInvoiceNo").value = order.orderId;
+            document.getElementById("delProductDetails").value = `${order.productName} (${order.quantity} ชุด)`;
+            
+            let modalEl = document.getElementById('selectOrderModal');
+            let modalObj = bootstrap.Modal.getInstance(modalEl);
+            if(modalObj) modalObj.hide();
         }
     </script>
 </body>
